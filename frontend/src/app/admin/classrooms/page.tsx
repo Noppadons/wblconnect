@@ -16,7 +16,7 @@ export default function AdminClassroomsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClassroom, setEditingClassroom] = useState<any>(null);
     const [user, setUser] = useState<any>(null);
-    const [formData, setFormData] = useState({ gradeLevel: '', roomNumber: '', homeroomTeacherId: '', semesterId: '2024-2', lineToken: '' });
+    const [formData, setFormData] = useState({ gradeLevel: '', roomNumber: '', homeroomTeacherId: '', semesterId: '2024-2' });
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -39,10 +39,10 @@ export default function AdminClassroomsPage() {
     const handleOpenModal = (classroom: any = null) => {
         if (classroom) {
             setEditingClassroom(classroom);
-            setFormData({ gradeLevel: classroom.grade?.level || '', roomNumber: classroom.roomNumber || '', homeroomTeacherId: classroom.homeroomTeacherId || '', semesterId: classroom.semesterId || '2024-2', lineToken: classroom.lineToken || '' });
+            setFormData({ gradeLevel: classroom.grade?.level || '', roomNumber: classroom.roomNumber || '', homeroomTeacherId: classroom.homeroomTeacherId || '', semesterId: classroom.semesterId || '2024-2' });
         } else {
             setEditingClassroom(null);
-            setFormData({ gradeLevel: '', roomNumber: '', homeroomTeacherId: '', semesterId: '2024-2', lineToken: '' });
+            setFormData({ gradeLevel: '', roomNumber: '', homeroomTeacherId: '', semesterId: '2024-2' });
         }
         setIsModalOpen(true);
     };
@@ -126,7 +126,6 @@ export default function AdminClassroomsPage() {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-text-muted">ภาคเรียน {c.semesterId || '2024/1'}</span>
-                                        {c.lineToken ? <span className="badge-success text-[10px]">LINE</span> : null}
                                     </div>
                                 </div>
                             </div>
@@ -144,47 +143,35 @@ export default function AdminClassroomsPage() {
             )}
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingClassroom ? 'แก้ไขห้องเรียน' : 'เพิ่มห้องเรียนใหม่'} subtitle="กรอกข้อมูลให้ครบถ้วน">
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="label">ระดับชั้น</label>
-                                    <input required placeholder="เช่น ม.1" className="input-field" value={formData.gradeLevel} onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="label">ห้องที่</label>
-                                    <input required placeholder="เช่น 1" className="input-field" value={formData.roomNumber} onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })} />
-                                </div>
-                            </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">ระดับชั้น</label>
+                            <input required placeholder="เช่น ม.1" className="input-field" value={formData.gradeLevel} onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })} />
+                        </div>
+                        <div>
+                            <label className="label">ห้องที่</label>
+                            <input required placeholder="เช่น 1" className="input-field" value={formData.roomNumber} onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })} />
+                        </div>
+                    </div>
 
-                            <div>
-                                <label className="label">ครูประจำชั้น</label>
-                                <div className="relative">
-                                    <select className="select-field pr-10" value={formData.homeroomTeacherId} onChange={(e) => setFormData({ ...formData, homeroomTeacherId: e.target.value })}>
-                                        <option value="">-- ยังไม่กำหนด --</option>
-                                        {teachers.map(t => <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={16} />
-                                </div>
-                            </div>
+                    <div>
+                        <label className="label">ครูประจำชั้น</label>
+                        <div className="relative">
+                            <select className="select-field pr-10" value={formData.homeroomTeacherId} onChange={(e) => setFormData({ ...formData, homeroomTeacherId: e.target.value })}>
+                                <option value="">-- ยังไม่กำหนด --</option>
+                                {teachers.map(t => <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" size={16} />
+                        </div>
+                    </div>
 
-                            <div>
-                                <label className="label">Line Group Token</label>
-                                <div className="flex gap-2">
-                                    <input placeholder="Channel / Group Token..." className="input-field" value={formData.lineToken} onChange={(e) => setFormData({ ...formData, lineToken: e.target.value })} />
-                                    <button type="button" onClick={async () => {
-                                        const token = formData.lineToken.trim();
-                                        if (!token) return toast.error('กรุณาระบุ Token');
-                                        try { await api.post('/communication/test-line', { to: token }); toast.success('ส่งทดสอบสำเร็จ'); }
-                                        catch { toast.error('ส่งไม่สำเร็จ'); }
-                                    }} className="btn-secondary whitespace-nowrap text-xs">ทดสอบ</button>
-                                </div>
-                            </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-border">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">ยกเลิก</button>
-                                <button type="submit" className="btn-primary flex-1">{editingClassroom ? 'บันทึก' : 'สร้างห้องเรียน'}</button>
-                            </div>
-                        </form>
+                    <div className="flex gap-3 pt-4 border-t border-border">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">ยกเลิก</button>
+                        <button type="submit" className="btn-primary flex-1">{editingClassroom ? 'บันทึก' : 'สร้างห้องเรียน'}</button>
+                    </div>
+                </form>
             </Modal>
         </AppShell>
     );

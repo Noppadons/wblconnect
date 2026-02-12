@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class UsersService {
@@ -22,7 +24,9 @@ export class UsersService {
                 lastName: true,
                 role: true,
                 avatarUrl: true,
-                createdAt: true
+                createdAt: true,
+                student: true,
+                teacher: true
             }
         });
     }
@@ -37,6 +41,27 @@ export class UsersService {
     async create(data: Prisma.UserCreateInput): Promise<User> {
         return this.prisma.user.create({
             data,
+        });
+    }
+
+    async changePassword(userId: string, data: ChangePasswordDto) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new Error('ไม่พบข้อมูลผู้ใช้งาน');
+        }
+
+        const isMatch = await bcrypt.compare(data.oldPassword, user.password);
+        if (!isMatch) {
+            throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+        }
+
+        const hashedNewPassword = await bcrypt.hash(data.newPassword, 10);
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedNewPassword },
         });
     }
 }

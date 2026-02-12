@@ -14,11 +14,12 @@ export class AssessmentService {
                 subjectId: data.subjectId,
                 classroomId: data.classroomId,
                 dueDate: data.dueDate ? new Date(data.dueDate) : null,
+                attachments: data.attachments || [],
             },
         });
     }
 
-    async submitAssignment(data: { studentId: string; assignmentId: string; content?: string }) {
+    async submitAssignment(data: { studentId: string; assignmentId: string; content?: string; attachments?: string[] }) {
         return this.prisma.submission.upsert({
             where: {
                 studentId_assignmentId: {
@@ -28,12 +29,16 @@ export class AssessmentService {
             },
             update: {
                 status: 'SUBMITTED',
+                content: data.content,
+                attachments: data.attachments || [],
                 updatedAt: new Date()
             },
             create: {
                 studentId: data.studentId,
                 assignmentId: data.assignmentId,
-                status: 'SUBMITTED'
+                status: 'SUBMITTED',
+                content: data.content,
+                attachments: data.attachments || []
             }
         });
     }

@@ -40,17 +40,36 @@ export default function BehaviorPage() {
 
         const fetchClassrooms = async () => {
             try {
+                // ดึงห้องที่ปรึกษา/ที่สอน
+                let myRooms: any[] = [];
+                try {
+                    const myRes = await api.get('/school/my-classrooms');
+                    myRooms = myRes.data || [];
+                } catch { }
+
                 const yearsRes = await api.get('/school/academic-years');
                 let rooms: any[] = [];
                 if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                    const semesterId = yearsRes.data[0].semesters[0].id;
+                    const semesters = yearsRes.data[0].semesters;
+                    // Smart pick: if Feb (1), pick Term 2 if available
+                    const month = new Date().getMonth(); // 0-11
+                    const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
+                    let semesterId = semesters[0].id;
+
+                    if (isTerm2Time) {
+                        const term2 = semesters.find((s: any) => s.term === 2);
+                        if (term2) semesterId = term2.id;
+                    }
+
                     const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
                     rooms = classroomsRes.data || [];
                 }
-                setClassrooms(rooms);
-                if (rooms.length > 0) {
-                    setSelectedClassroomId(rooms[0].id);
-                    setStudents(rooms[0].students || []);
+
+                const finalRooms = rooms.length > 0 ? rooms : myRooms;
+                setClassrooms(finalRooms);
+                if (finalRooms.length > 0) {
+                    setSelectedClassroomId(finalRooms[0].id);
+                    setStudents(finalRooms[0].students || []);
                 }
             } catch (err) { console.error(err); }
             finally { setLoading(false); }

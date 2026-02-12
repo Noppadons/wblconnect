@@ -42,6 +42,7 @@ export const TEACHER_SIDEBAR: SidebarItem[] = [
     { label: 'คะแนน/เกรด', href: '/teacher/grading', icon: BarChart3 },
     { label: 'นักเรียน', href: '/teacher/students', icon: Users },
     { label: 'พฤติกรรม', href: '/teacher/behavior', icon: Smile },
+    { label: 'เอกสารการสอน', href: '/teacher/materials', icon: BookOpen },
 ];
 
 export const STUDENT_SIDEBAR: SidebarItem[] = [
@@ -49,4 +50,5 @@ export const STUDENT_SIDEBAR: SidebarItem[] = [
     { label: 'ตารางเรียน', href: '/student/schedule', icon: Calendar },
     { label: 'ผลการเรียน', href: '/student/grades', icon: BarChart3 },
     { label: 'งานที่ได้รับ', href: '/student/assignments', icon: FileText },
+    { label: 'เอกสารการเรียน', href: '/student/materials', icon: BookOpen },
 ];

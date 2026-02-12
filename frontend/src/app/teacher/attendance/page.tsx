@@ -93,7 +93,17 @@ export default function AttendanceCheckPage() {
                 const yearsRes = await api.get('/school/academic-years');
                 let rooms: any[] = [];
                 if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                    const semesterId = yearsRes.data[0].semesters[0].id;
+                    const semesters = yearsRes.data[0].semesters;
+                    // Smart pick: if Feb (1), pick Term 2 if available
+                    const month = new Date().getMonth(); // 0-11
+                    const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
+                    let semesterId = semesters[0].id;
+
+                    if (isTerm2Time) {
+                        const term2 = semesters.find((s: any) => s.term === 2);
+                        if (term2) semesterId = term2.id;
+                    }
+
                     const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
                     rooms = classroomsRes.data || [];
                 }
@@ -333,12 +343,11 @@ export default function AttendanceCheckPage() {
                                                 <td className="px-4 py-3 text-sm text-text-muted">{(index + 1).toString().padStart(2, '0')}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                                                            student.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
-                                                            student.status === 'ABSENT' ? 'bg-red-100 text-red-700' :
-                                                            student.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-blue-100 text-blue-700'
-                                                        }`}>{student.name[0]}</div>
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${student.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
+                                                                student.status === 'ABSENT' ? 'bg-red-100 text-red-700' :
+                                                                    student.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
+                                                                        'bg-blue-100 text-blue-700'
+                                                            }`}>{student.name[0]}</div>
                                                         <div>
                                                             <p className="text-sm font-semibold text-text-primary">{student.name}</p>
                                                             <div className="flex items-center gap-2">

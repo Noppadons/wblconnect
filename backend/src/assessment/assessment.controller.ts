@@ -56,8 +56,10 @@ export class AssessmentController {
     @Roles(Role.TEACHER, Role.ADMIN)
     @UseGuards(RolesGuard)
     @Post('bulk-grade/:id')
-    async bulkGrade(@Param('id') id: string, @Body() data: BulkGradeItemDto[]) {
-        return this.assessmentService.bulkUpdateGrades(id, data);
+    async bulkGrade(@Param('id') id: string, @Body() body: any) {
+        // Handle both: [ {...} ] AND { grades: [ {...} ] }
+        const grades = Array.isArray(body) ? body : (body.grades || []);
+        return this.assessmentService.bulkUpdateGrades(id, grades);
     }
 
     @Roles(Role.TEACHER, Role.ADMIN)

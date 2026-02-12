@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateNotificationDto {
     @IsString()
@@ -13,6 +13,27 @@ export class CreateNotificationDto {
     @IsOptional()
     @IsString()
     targetId?: string;
+
+    @IsOptional()
+    @IsString()
+    imageUrl?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isPinned?: boolean;
+
+    @IsOptional()
+    @IsString()
+    expiresAt?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    sendLine?: boolean;
+}
+
+export class MarkAsReadDto {
+    @IsString()
+    notificationId: string;
 }
 
 export class BroadcastLineDto {

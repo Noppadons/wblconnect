@@ -36,7 +36,17 @@ export default function MyStudentsPage() {
                 const yearsRes = await api.get('/school/academic-years');
                 let allRooms: any[] = [];
                 if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                    const semesterId = yearsRes.data[0].semesters[0].id;
+                    const semesters = yearsRes.data[0].semesters;
+                    // Smart pick: if Feb (1), pick Term 2 if available
+                    const month = new Date().getMonth(); // 0-11
+                    const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
+                    let semesterId = semesters[0].id;
+
+                    if (isTerm2Time) {
+                        const term2 = semesters.find((s: any) => s.term === 2);
+                        if (term2) semesterId = term2.id;
+                    }
+
                     const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
                     allRooms = classroomsRes.data || [];
                 }
@@ -51,17 +61,19 @@ export default function MyStudentsPage() {
                 )) || null;
 
                 setHomeroomClassroom(homeroom);
-                setAllClassrooms(allRooms);
+                // Fallback: if allRooms is empty but teacher has rooms, show teacher's rooms
+                setAllClassrooms(allRooms.length > 0 ? allRooms : myRooms);
 
                 // ถ้ามีห้องที่ปรึกษา → เริ่มที่ tab homeroom
                 if (homeroom) {
                     setActiveTab('homeroom');
                     setStudents(homeroom.students || []);
                 } else {
+                    const displayRooms = allRooms.length > 0 ? allRooms : myRooms;
                     setActiveTab('all');
-                    if (allRooms.length > 0) {
-                        setSelectedClassroomId(allRooms[0].id);
-                        setStudents(allRooms[0].students || []);
+                    if (displayRooms.length > 0) {
+                        setSelectedClassroomId(displayRooms[0].id);
+                        setStudents(displayRooms[0].students || []);
                     }
                 }
             } catch (err) { console.error(err); }

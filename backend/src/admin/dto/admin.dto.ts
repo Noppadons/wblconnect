@@ -125,7 +125,11 @@ export class UpdateClassroomDto {
 
     @IsOptional()
     @IsString()
-    lineToken?: string;
+    gradeLevel?: string;
+
+    @IsOptional()
+    @IsString()
+    semesterId?: string;
 }
 
 export class UpdateSettingsDto {

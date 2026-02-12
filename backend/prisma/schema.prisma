@@ -57,7 +57,6 @@ model Classroom {
   subjects          Subject[]
   assignments       Assignment[]
   schedules         Schedule[]
-  lineToken         String? // Token สำหรับแจ้งเตือนกลุ่มห้องเรียน
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -101,6 +100,7 @@ model Teacher {
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   homeroomClass Classroom? @relation("Homeroom")
   subjects      Subject[]
+  materials     LearningMaterial[]
   schedules     Schedule[]
 }
 
@@ -113,6 +113,7 @@ model Subject {
   classroomId String?
   classroom   Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
   assignments Assignment[]
+  materials   LearningMaterial[]
   schedules   Schedule[]
   credit      Float       @default(1.5)
   semesterId  String?
@@ -128,6 +129,7 @@ model Assignment {
   dueDate     DateTime?
   subjectId   String
   subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  attachments String[]     @default([])
   submissions Submission[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -137,9 +139,11 @@ model Assignment {
 
 model Submission {
   id           String     @id @default(uuid())
+  content      String?
   points       Float?
   feedback     String?
   status       String     @default("PENDING") // PENDING, SUBMITTED, GRADED
+  attachments  String[]   @default([])
   studentId    String
   student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
   assignmentId String
@@ -148,6 +152,20 @@ model Submission {
   updatedAt    DateTime   @updatedAt
 
   @@unique([studentId, assignmentId]) // Added for bulkUpdateGrades upsert
+}
+
+model LearningMaterial {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  fileUrl     String
+  fileType    String?
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Attendance {
@@ -181,9 +199,25 @@ model Notification {
   title     String
   content   String
   type      String // ANNOUNCEMENT, ALERT
-  targetId  String? // ID ของเป้าหมาย (Classroom/Student/Global)
+  targetId  String? // Classroom ID or null for Global
   imageUrl  String?
+  isPinned  Boolean  @default(false)
+  expiresAt DateTime?
+  creatorId String?
+  readBy    UserNotification[]
   createdAt DateTime @default(now())
+}
+
+model UserNotification {
+  id             String       @id @default(uuid())
+  userId         String
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, notificationId])
 }
 
 model StudentSubject {

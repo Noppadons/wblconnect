@@ -8,9 +8,11 @@ import {
     User,
     ChevronLeft,
     GraduationCap,
+    Lock,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { SidebarItem } from '@/lib/sidebar';
+import ChangePasswordModal from '../Auth/ChangePasswordModal';
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -31,6 +33,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function AppShell({ children, role, user, sidebarItems, pageTitle, pageSubtitle, headerActions }: AppShellProps) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
@@ -96,11 +99,10 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                                 key={item.href}
                                 href={item.href}
                                 title={collapsed ? item.label : undefined}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${
-                                    isActive
-                                        ? 'bg-primary-light text-primary font-semibold'
-                                        : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
-                                } ${collapsed ? 'justify-center' : ''}`}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${isActive
+                                    ? 'bg-primary-light text-primary font-semibold'
+                                    : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
+                                    } ${collapsed ? 'justify-center' : ''}`}
                             >
                                 <item.icon size={20} strokeWidth={isActive ? 2.2 : 1.8} className="shrink-0" />
                                 {!collapsed && <span className="truncate">{item.label}</span>}
@@ -163,6 +165,13 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                                 )}
                             </div>
                             <button
+                                onClick={() => setIsChangePasswordOpen(true)}
+                                className="p-2 text-text-muted hover:text-primary hover:bg-primary-light rounded-lg transition-colors"
+                                title="เปลี่ยนรหัสผ่าน"
+                            >
+                                <Lock size={18} />
+                            </button>
+                            <button
                                 onClick={handleLogout}
                                 className="p-2 text-text-muted hover:text-danger hover:bg-danger-light rounded-lg transition-colors"
                                 title="ออกจากระบบ"
@@ -172,6 +181,11 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                         </div>
                     </div>
                 </header>
+
+                <ChangePasswordModal
+                    isOpen={isChangePasswordOpen}
+                    onClose={() => setIsChangePasswordOpen(false)}
+                />
 
                 {/* Page Content */}
                 <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
@@ -210,11 +224,10 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                                     <a
                                         key={item.href}
                                         href={item.href}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${
-                                            isActive
-                                                ? 'bg-primary-light text-primary font-semibold'
-                                                : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
-                                        }`}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${isActive
+                                            ? 'bg-primary-light text-primary font-semibold'
+                                            : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
+                                            }`}
                                     >
                                         <item.icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                                         {item.label}
@@ -222,7 +235,17 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                                 );
                             })}
                         </nav>
-                        <div className="p-3 border-t border-border-light">
+                        <div className="p-3 border-t border-border-light space-y-1">
+                            <button
+                                onClick={() => {
+                                    setMobileOpen(false);
+                                    setIsChangePasswordOpen(true);
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-text-secondary hover:bg-slate-50 transition-colors"
+                            >
+                                <Lock size={18} />
+                                เปลี่ยนรหัสผ่าน
+                            </button>
                             <button
                                 onClick={handleLogout}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-danger hover:bg-danger-light transition-colors"

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { FileText, Clock, CheckCircle2, AlertCircle, Upload, Send, BookOpen, MessageSquare, Star } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, AlertCircle, Upload, Send, BookOpen, MessageSquare, Star, X, ChevronDown, Download } from 'lucide-react';
 import api from '@/lib/api';
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
@@ -15,6 +15,8 @@ export default function StudentAssignmentsPage() {
     const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
     const [viewAssignment, setViewAssignment] = useState<any | null>(null);
     const [submissionContent, setSubmissionContent] = useState('');
+    const [attachments, setAttachments] = useState<any[]>([]);
+    const [uploading, setUploading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -30,16 +32,52 @@ export default function StudentAssignmentsPage() {
         catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const toastId = toast.loading('กำลังอัปโหลดไฟล์...');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await api.post('/upload/document', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setAttachments(prev => [...prev, { name: file.name, url: res.data.url }]);
+            toast.success('อัปโหลดสำเร็จ', { id: toastId });
+        } catch (err) {
+            toast.error('อัปโหลดล้มเหลว', { id: toastId });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = async () => {
-        if (!selectedAssignment || !submissionContent.trim()) return;
+        if (!selectedAssignment || (!submissionContent.trim() && attachments.length === 0)) return;
         setSubmitting(true);
         try {
             const userRes = await api.get('/auth/profile');
             const studentId = userRes.data.student?.id;
             if (!studentId) throw new Error("Student ID not found");
-            await api.post('/assessment/submit', { studentId, assignmentId: selectedAssignment.id, content: submissionContent });
+            await api.post('/assessment/submit', {
+                studentId,
+                assignmentId: selectedAssignment.id,
+                content: submissionContent,
+                attachments: attachments.map(a => a.url)
+            });
             setSubmitSuccess(true);
-            setTimeout(() => { setSubmitSuccess(false); setSelectedAssignment(null); setSubmissionContent(''); fetchMyAssignments(); }, 1500);
+            setTimeout(() => {
+                setSubmitSuccess(false);
+                setSelectedAssignment(null);
+                setSubmissionContent('');
+                setAttachments([]);
+                fetchMyAssignments();
+            }, 1500);
         } catch (err) { console.error(err); toast.error('เกิดข้อผิดพลาดในการส่งงาน'); }
         finally { setSubmitting(false); }
     };
@@ -90,6 +128,18 @@ export default function StudentAssignmentsPage() {
                                         </div>
                                         {a.description && (
                                             <p className="text-xs text-text-muted mb-2 line-clamp-2">{a.description}</p>
+                                        )}
+                                        {a.attachments?.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {a.attachments.map((url: string, i: number) => (
+                                                    <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`}
+                                                        target="_blank" rel="noreferrer"
+                                                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
+                                                    >
+                                                        <Upload size={10} className="rotate-180" /> ไฟล์คำสั่ง {i + 1}
+                                                    </a>
+                                                ))}
+                                            </div>
                                         )}
                                         <div className="flex items-center gap-4 text-xs text-text-muted flex-wrap">
                                             <span className="font-semibold text-text-secondary">{a.maxPoints} คะแนน</span>
@@ -158,12 +208,27 @@ export default function StudentAssignmentsPage() {
                 ) : (
                     <div className="p-6 space-y-4">
                         {/* Assignment details */}
-                        {selectedAssignment?.description && (
-                            <div className="px-4 py-3 bg-slate-50 rounded-lg border border-border">
-                                <p className="text-xs font-semibold text-text-secondary mb-1 flex items-center gap-1"><BookOpen size={12} /> รายละเอียดงาน</p>
-                                <p className="text-sm text-text-primary">{selectedAssignment.description}</p>
-                            </div>
-                        )}
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-border">
+                            <p className="text-xs font-semibold text-text-secondary mb-1 flex items-center gap-1"><BookOpen size={12} /> รายละเอียดงาน</p>
+                            <p className="text-sm text-text-primary">{selectedAssignment?.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+
+                            {/* Teacher's Attachments */}
+                            {selectedAssignment?.attachments?.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                    <p className="text-[10px] font-bold text-text-muted uppercase mb-2 tracking-wider">เอกสารประกอบการสั่งงาน</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedAssignment.attachments.map((url: string, i: number) => (
+                                            <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`} target="_blank" rel="noreferrer"
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-primary hover:border-primary transition-colors">
+                                                <Upload size={12} className="rotate-180" />
+                                                ไฟล์ที่ {i + 1}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex items-center gap-4 text-xs text-text-muted">
                             <span className="font-semibold text-text-secondary">{selectedAssignment?.maxPoints} คะแนน</span>
                             {selectedAssignment?.dueDate && (
@@ -172,19 +237,37 @@ export default function StudentAssignmentsPage() {
                                 </span>
                             )}
                         </div>
+
                         <div>
                             <label className="label">ข้อความถึงครู</label>
                             <textarea value={submissionContent} onChange={(e) => setSubmissionContent(e.target.value)}
                                 placeholder="พิมพ์เนื้อหาการบ้าน หรือข้อความถึงครู..."
                                 className="input-field h-32 resize-none" />
                         </div>
-                        <div className="border-2 border-dashed border-border rounded-xl p-4 text-center opacity-60">
-                            <Upload className="mx-auto text-text-muted mb-1" size={20} />
-                            <p className="text-xs text-text-muted">ระบบแนบไฟล์ยังไม่เปิดใช้งาน</p>
+
+                        <div>
+                            <label className="label">แนบไฟล์งานของคุณ</label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {attachments.map((file, i) => (
+                                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-medium">
+                                        <span className="truncate max-w-[150px]">{file.name}</span>
+                                        <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-700">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-primary/50'}`}>
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <Upload size={20} className="text-text-muted mb-1" />
+                                    <p className="text-xs text-text-muted">อัปโหลดไฟล์ (PDF, รูปภาพ, เอกสาร)</p>
+                                </div>
+                                <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                            </label>
                         </div>
                         <div className="flex gap-3 pt-4 border-t border-border">
                             <button onClick={() => setSelectedAssignment(null)} className="btn-secondary flex-1">ยกเลิก</button>
-                            <button onClick={handleSubmit} disabled={!submissionContent.trim() || submitting} className="btn-primary flex-1 disabled:opacity-50">
+                            <button onClick={handleSubmit} disabled={(submissionContent.trim() === '' && attachments.length === 0) || submitting} className="btn-primary flex-1 disabled:opacity-50">
                                 {submitting ? 'กำลังส่ง...' : <><Send size={16} /> ยืนยันส่งงาน</>}
                             </button>
                         </div>

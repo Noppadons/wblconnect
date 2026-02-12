@@ -61,4 +61,35 @@ export class SchoolController {
     async deleteSubject(@Param('id') id: string) {
         return this.schoolService.deleteSubject(id);
     }
+
+    // Learning Materials
+    @Get('materials')
+    @UseGuards(JwtAuthGuard)
+    async getMaterials(@Query('subjectId') subjectId: string) {
+        return this.schoolService.getLearningMaterials(subjectId);
+    }
+
+    @Post('materials')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.TEACHER, Role.ADMIN)
+    async createMaterial(@Req() req: any, @Body() body: any) {
+        // Find teacher profile if not ADMIN
+        let teacherId = body.teacherId;
+        if (req.user.role === Role.TEACHER) {
+            const teacher = await this.schoolService['prisma'].teacher.findUnique({ where: { userId: req.user.id } });
+            if (teacher) teacherId = teacher.id;
+        }
+
+        return this.schoolService.createLearningMaterial({
+            ...body,
+            teacherId
+        });
+    }
+
+    @Delete('materials/:id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.TEACHER, Role.ADMIN)
+    async deleteMaterial(@Param('id') id: string) {
+        return this.schoolService.deleteLearningMaterial(id);
+    }
 }

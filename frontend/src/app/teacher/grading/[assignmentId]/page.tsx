@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Save, ChevronLeft, CheckCircle2, AlertCircle, Search, X } from 'lucide-react';
+import { Save, ChevronLeft, CheckCircle2, AlertCircle, Search, X, Eye, FileSearch, Upload } from 'lucide-react';
 import api from '@/lib/api';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -64,11 +64,28 @@ export default function GradebookGridPage() {
                 <div className="flex items-center gap-3">
                     <button onClick={() => router.push('/teacher/grading')} className="btn-ghost"><ChevronLeft size={18} /> กลับ</button>
                     <button onClick={handleSave} disabled={saving} className="btn-primary">
-                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={16} /> บันทึก</>}
+                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={16} /> บันทึกทั้งหมด</>}
                     </button>
                 </div>
             }
         >
+            {data?.description || data?.attachments?.length > 0 ? (
+                <div className="card p-4 mb-4 bg-slate-50 border-slate-200">
+                    {data.description && <p className="text-sm text-text-primary mb-3">{data.description}</p>}
+                    {data.attachments?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {data.attachments.map((url: string, i: number) => (
+                                <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`}
+                                    target="_blank" rel="noreferrer"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
+                                    <Upload size={14} className="rotate-180" />
+                                    ไฟล์คำสั่งที่ {i + 1}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ) : null}
             {loading && !data ? (
                 <div className="flex items-center justify-center py-32">
                     <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -93,6 +110,7 @@ export default function GradebookGridPage() {
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">นักเรียน</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden sm:table-cell">สถานะ</th>
+                                        <th className="px-4 py-3 text-xs font-semibold text-text-secondary">ผลงาน</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary text-center">คะแนน (/{data?.maxPoints})</th>
                                     </tr>
                                 </thead>
@@ -110,6 +128,23 @@ export default function GradebookGridPage() {
                                                         className="badge-success text-xs cursor-pointer hover:opacity-80">ส่งแล้ว</button>
                                                 ) : (
                                                     <span className="badge-warning text-xs">ยังไม่ส่ง</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {s.submission ? (
+                                                    <button
+                                                        onClick={() => setSelectedSubmission({ ...s.submission, studentName: s.name })}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-lg text-xs font-bold hover:bg-primary/10 transition-colors"
+                                                    >
+                                                        <Eye size={14} /> ดูผลงาน
+                                                        {s.submission.attachments?.length > 0 && (
+                                                            <span className="flex items-center gap-0.5 px-1 bg-primary text-white rounded text-[8px]">
+                                                                {s.submission.attachments.length}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs text-text-muted italic">ยังไม่มีงาน</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
@@ -148,12 +183,28 @@ export default function GradebookGridPage() {
                             <button onClick={() => setSelectedSubmission(null)} className="btn-ghost p-2"><X size={20} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-border max-h-48 overflow-y-auto">
-                                <p className="text-sm text-text-secondary whitespace-pre-wrap">
-                                    {selectedSubmission.content || <span className="text-text-muted italic">ไม่มีเนื้อหา</span>}
+                            <div className="bg-slate-50 p-4 rounded-xl border border-border">
+                                <p className="text-sm text-text-secondary whitespace-pre-wrap mb-4">
+                                    {selectedSubmission.content || <span className="text-text-muted italic">ไม่มีเนื้อหาพิมพ์ส่งมา</span>}
                                 </p>
+
+                                {/* Student's Attachments */}
+                                {selectedSubmission.attachments?.length > 0 && (
+                                    <div className="mt-2 pt-3 border-t border-slate-200">
+                                        <p className="text-[10px] font-bold text-text-muted uppercase mb-2">ไฟล์ที่แนบมา</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedSubmission.attachments.map((url: string, i: number) => (
+                                                <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`} target="_blank" rel="noreferrer"
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
+                                                    <Upload size={14} className="rotate-180" />
+                                                    ไฟล์ที่ {i + 1}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex justify-between text-sm">
+                            <div className="flex justify-between text-xs">
                                 <span className="text-text-muted">ส่งเมื่อ: {new Date(selectedSubmission.updatedAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                                 <span className={selectedSubmission.status === 'GRADED' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'}>
                                     {selectedSubmission.status === 'GRADED' ? 'ตรวจแล้ว' : 'รอตรวจ'}
@@ -167,7 +218,28 @@ export default function GradebookGridPage() {
                             </div>
                             <div className="flex gap-3 pt-2 border-t border-border">
                                 <button onClick={() => setSelectedSubmission(null)} className="btn-secondary flex-1">ปิด</button>
-                                <button onClick={() => setSelectedSubmission(null)} className="btn-primary flex-1">ตกลง</button>
+                                <button onClick={async () => {
+                                    const points = grades[selectedSubmission.studentId];
+                                    if (points === undefined || points === null) {
+                                        toast.error('กรุณาระบุคะแนน');
+                                        return;
+                                    }
+                                    setSaving(true);
+                                    try {
+                                        await api.post(`/assessment/bulk-grade/${assignmentId}`, {
+                                            grades: [{ studentId: selectedSubmission.studentId, points: Number(points) }]
+                                        });
+                                        toast.success('บันทึกคะแนนเรียบร้อย');
+                                        setSelectedSubmission(null);
+                                        fetchGradebook();
+                                    } catch {
+                                        toast.error('เกิดข้อผิดพลาดในการบันทึก');
+                                    } finally {
+                                        setSaving(false);
+                                    }
+                                }} disabled={saving} className="btn-primary flex-1">
+                                    {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" /> : 'บันทึกคะแนน'}
+                                </button>
                             </div>
                         </div>
                     </div>

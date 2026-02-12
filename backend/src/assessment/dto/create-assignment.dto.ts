@@ -21,6 +21,10 @@ export class CreateAssignmentDto {
     @IsOptional()
     @IsDateString()
     dueDate?: string;
+
+    @IsOptional()
+    @IsString({ each: true })
+    attachments?: string[];
 }
 
 export class SubmitAssignmentDto {
@@ -33,6 +37,10 @@ export class SubmitAssignmentDto {
     @IsOptional()
     @IsString()
     content?: string;
+
+    @IsOptional()
+    @IsString({ each: true })
+    attachments?: string[];
 }
 
 export class GradeSubmissionDto {

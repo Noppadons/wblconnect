@@ -12,7 +12,9 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { NoCacheInterceptor } from './common/interceptors/no-cache.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
 
   // STARTUP VALIDATION: Ensure critical env vars are set
   const requiredEnv = ['JWT_SECRET', 'DATABASE_URL'];

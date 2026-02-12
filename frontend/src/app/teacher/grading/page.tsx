@@ -18,6 +18,8 @@ export default function TeacherGradingOverview() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [formData, setFormData] = useState({ title: '', description: '', maxPoints: 10, dueDate: '', classroomId: '', subjectId: '' });
+    const [attachments, setAttachments] = useState<any[]>([]);
+    const [uploading, setUploading] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -32,15 +34,34 @@ export default function TeacherGradingOverview() {
 
     const fetchClassrooms = async () => {
         try {
+            // ดึงห้องที่ปรึกษา/ที่สอน
+            let myRooms: any[] = [];
+            try {
+                const myRes = await api.get('/school/my-classrooms');
+                myRooms = myRes.data || [];
+            } catch { }
+
             const yearsRes = await api.get('/school/academic-years');
             let rooms: any[] = [];
             if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                const semesterId = yearsRes.data[0].semesters[0].id;
+                const semesters = yearsRes.data[0].semesters;
+                // Smart pick: if Feb (1), pick Term 2 if available
+                const month = new Date().getMonth(); // 0-11
+                const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
+                let semesterId = semesters[0].id;
+
+                if (isTerm2Time) {
+                    const term2 = semesters.find((s: any) => s.term === 2);
+                    if (term2) semesterId = term2.id;
+                }
+
                 const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
                 rooms = classroomsRes.data || [];
             }
-            setClassrooms(rooms);
-            if (rooms.length > 0 && !selectedClassroom) setSelectedClassroom(rooms[0].id);
+
+            const finalRooms = rooms.length > 0 ? rooms : myRooms;
+            setClassrooms(finalRooms);
+            if (finalRooms.length > 0 && !selectedClassroom) setSelectedClassroom(finalRooms[0].id);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
     const fetchMySubjects = async () => {
@@ -53,12 +74,42 @@ export default function TeacherGradingOverview() {
         catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const toastId = toast.loading('กำลังอัปโหลดไฟล์...');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await api.post('/upload/document', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setAttachments(prev => [...prev, { name: file.name, url: res.data.url }]);
+            toast.success('อัปโหลดสำเร็จ', { id: toastId });
+        } catch (err) {
+            toast.error('อัปโหลดล้มเหลว', { id: toastId });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/assessment/assignment', { ...formData, maxPoints: Number(formData.maxPoints) });
+            await api.post('/assessment/assignment', {
+                ...formData,
+                maxPoints: Number(formData.maxPoints),
+                attachments: attachments.map(a => a.url)
+            });
             toast.success('สร้างงานเรียบร้อย'); setIsModalOpen(false);
             setFormData({ title: '', description: '', maxPoints: 10, dueDate: '', classroomId: selectedClassroom || '', subjectId: formData.subjectId });
+            setAttachments([]);
             if (selectedClassroom) fetchAssignments(selectedClassroom);
         } catch (err: any) { toast.error(err.response?.data?.message || 'เกิดข้อผิดพลาด'); }
     };
@@ -109,6 +160,18 @@ export default function TeacherGradingOverview() {
                                             </div>
                                             {asm.description && (
                                                 <p className="text-xs text-text-muted mb-2 line-clamp-2">{asm.description}</p>
+                                            )}
+                                            {asm.attachments?.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mb-3">
+                                                    {asm.attachments.map((url: string, i: number) => (
+                                                        <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`}
+                                                            target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                                                            className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
+                                                        >
+                                                            <Upload size={10} className="rotate-180" /> ไฟล์ {i + 1}
+                                                        </a>
+                                                    ))}
+                                                </div>
                                             )}
                                             <div className="flex items-center gap-4 text-xs text-text-muted">
                                                 <span className="font-semibold text-text-secondary">{asm.maxPoints} คะแนน</span>
@@ -177,6 +240,26 @@ export default function TeacherGradingOverview() {
                             </select>
                             <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
                         </div>
+                    </div>
+                    <div>
+                        <label className="label">แนบไฟล์คำสั่ง / เอกสาร (ถ้ามี)</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {attachments.map((file, i) => (
+                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-medium">
+                                    <span className="truncate max-w-[150px]">{file.name}</span>
+                                    <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-700">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-primary/50'}`}>
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Plus size={20} className="text-text-muted mb-1" />
+                                <p className="text-xs text-text-muted">คลิกเพื่ออัปโหลดไฟล์</p>
+                            </div>
+                            <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                        </label>
                     </div>
                     <div className="flex gap-3 pt-4 border-t border-border">
                         <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">ยกเลิก</button>

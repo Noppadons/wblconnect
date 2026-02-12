@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { SchoolService } from '../school/school.service';
 
 @Injectable()
 export class AdminService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private schoolService: SchoolService
+    ) { }
 
     async getDashboardStats() {
         const now = new Date();
@@ -282,6 +286,7 @@ export class AdminService {
         });
     }
 
+
     // Classroom Management
     async findAllClassrooms() {
         return this.prisma.classroom.findMany({
@@ -303,7 +308,10 @@ export class AdminService {
     }
 
     async createClassroom(data: any) {
-        const { semesterId, gradeLevel, roomNumber, homeroomTeacherId } = data;
+        const { semesterId: rawSemesterId, gradeLevel, roomNumber, homeroomTeacherId } = data;
+
+        // Resolve semesterId to a real UUID
+        const semesterId = await this.schoolService.resolveSemesterId(rawSemesterId);
 
         // Find or create gradeLevel
         let grade = await this.prisma.gradeLevel.findFirst({
@@ -335,15 +343,33 @@ export class AdminService {
     }
 
     async updateClassroom(id: string, data: any) {
-        const { roomNumber, homeroomTeacherId, lineToken } = data;
+        const { roomNumber, homeroomTeacherId, gradeLevel, semesterId: rawSemesterId } = data;
+
+        const updateData: any = {
+            roomNumber,
+            homeroomTeacherId: homeroomTeacherId || null
+        };
+
+        if (rawSemesterId) {
+            updateData.semesterId = await this.schoolService.resolveSemesterId(rawSemesterId);
+        }
+
+        if (gradeLevel) {
+            let grade = await this.prisma.gradeLevel.findFirst({
+                where: { level: gradeLevel }
+            });
+
+            if (!grade) {
+                grade = await this.prisma.gradeLevel.create({
+                    data: { level: gradeLevel }
+                });
+            }
+            updateData.gradeId = grade.id;
+        }
 
         return this.prisma.classroom.update({
             where: { id },
-            data: {
-                roomNumber,
-                homeroomTeacherId: homeroomTeacherId || null,
-                lineToken
-            },
+            data: updateData,
             include: {
                 grade: true,
                 homeroomTeacher: {

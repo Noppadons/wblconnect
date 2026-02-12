@@ -80,7 +80,6 @@ export class AttendanceService {
             let shouldNotify = false;
 
             console.log(`[Attendance] Checking notification for ${name}, Period: ${data.period}, Status: ${data.status}`);
-            console.log(`[Attendance] Classroom Token: ${student.classroom?.lineToken ? 'Yes' : 'No'} (${student.classroom?.lineToken})`);
 
             // Case 1: Morning Assembly (Period 0)
             if (data.period === 0) {
@@ -109,12 +108,6 @@ export class AttendanceService {
                 // Priority 1: Parent Direct (Targeted)
                 if (student.parentLineToken) {
                     await this.lineService.sendMessage(student.parentLineToken, message);
-                    notified = true;
-                }
-
-                // Priority 2: Classroom Group (Targeted)
-                if (student.classroom?.lineToken && student.classroom.lineToken !== student.parentLineToken) {
-                    await this.lineService.sendMessage(student.classroom.lineToken, message);
                     notified = true;
                 }
 
