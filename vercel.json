@@ -1,13 +1,30 @@
 {
     "version": 2,
+    "builds": [
+        {
+            "src": "frontend/package.json",
+            "use": "@vercel/next",
+            "config": {
+                "distDir": ".next"
+            }
+        },
+        {
+            "src": "backend/api/index.ts",
+            "use": "@vercel/node"
+        }
+    ],
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "/backend/api/index.ts"
+            "destination": "backend/api/index.ts"
         },
         {
             "source": "/uploads/(.*)",
-            "destination": "https://your-public-storage-url.com/uploads/$1"
+            "destination": "https://pquimvqveryfvjfyvcli.supabase.co/storage/v1/object/public/uploads/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "frontend/$1"
         }
     ]
 }
