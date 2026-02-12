@@ -1,0 +1,13 @@
+{
+    "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/backend/api/index.ts"
+        },
+        {
+            "source": "/uploads/(.*)",
+            "destination": "https://your-public-storage-url.com/uploads/$1"
+        }
+    ]
+}
