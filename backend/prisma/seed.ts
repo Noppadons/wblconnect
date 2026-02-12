@@ -1,31 +1,37 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+// Force use of direct URL for seeding to avoid PgBouncer issues
+if (process.env.DIRECT_URL) {
+    process.env.DATABASE_URL = process.env.DIRECT_URL;
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    const hashedPassword = await bcrypt.hash('12345678', 10);
 
-    // Clear existing data (optional but good for clean seed)
+    console.log('--- FULL DB SEED (DIRECT CONNECTION) ---');
+
+    // 0. Cleanup
+    const tables = [
+        'Attendance', 'Submission', 'Assignment', 'Schedule',
+        'StudentSubject', 'Subject', 'BehaviorLog', 'Student',
+        'Teacher', 'Classroom', 'Semester', 'AcademicYear',
+        'UserNotification', 'Notification', 'User', 'GradeLevel', 'School'
+    ];
+
     console.log('Cleaning up existing data...');
-    // Delete in order of dependencies (leaves first, then parents)
-    await prisma.attendance.deleteMany();
-    await prisma.submission.deleteMany();
-    await prisma.assignment.deleteMany();
-    await prisma.schedule.deleteMany();
-    await prisma.studentSubject.deleteMany();
-    await prisma.subject.deleteMany();
-    await prisma.behaviorLog.deleteMany();
-    await prisma.student.deleteMany();
-    await prisma.teacher.deleteMany();
-    await prisma.classroom.deleteMany();
-    await prisma.semester.deleteMany();
-    await prisma.academicYear.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.gradeLevel.deleteMany();
-    await prisma.school.deleteMany();
+    for (const table of tables) {
+        try {
+            await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
+            console.log(`- Truncated ${table}`);
+        } catch (err) {
+            // console.warn(`- Skip ${table}`);
+        }
+    }
 
-    // 0. Create Admin User
+    // 1. Create Admin User
     await prisma.user.create({
         data: {
             email: 'admin@school.com',
@@ -35,16 +41,16 @@ async function main() {
             role: 'ADMIN',
         },
     });
-    console.log('Admin user created: admin@school.com / 123456');
+    console.log('Admin user created: admin@school.com / 12345678');
 
-    // 1. Create School
+    // 2. Create School
     const school = await prisma.school.create({
         data: {
             name: 'โรงเรียนวัดบึงเหล็ก ในพระบรมราชานุเคราะห์',
         },
     });
 
-    // 2. Create Academic Year & Semester
+    // 3. Create Academic Year & Semester
     const academicYear = await prisma.academicYear.create({
         data: {
             year: 2567,
@@ -62,13 +68,13 @@ async function main() {
     const semester1 = academicYear.semesters.find(s => s.term === 1);
     if (!semester1) throw new Error('Semester 1 not found');
 
-    // 3. Create Grade Levels (M.1 - M.6)
+    // 4. Create Grade Levels
     const grades = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
     const gradeLevels = await Promise.all(
         grades.map(level => prisma.gradeLevel.create({ data: { level } }))
     );
 
-    // 4. Create Teachers (15 Teachers)
+    // 5. Create Teachers (15 Teachers)
     const teachers: any[] = [];
     const teacherNames = [
         { first: 'สมชาย', last: 'รักเรียน' }, { first: 'สมหญิง', last: 'จริงใจ' },
@@ -97,7 +103,7 @@ async function main() {
         teachers.push(user.teacher);
     }
 
-    // 5. Create Classrooms (12 Classrooms: 2 per grade)
+    // 6. Create Classrooms
     const classrooms: any[] = [];
     for (let i = 0; i < gradeLevels.length; i++) {
         for (let room = 1; room <= 2; room++) {
@@ -113,7 +119,7 @@ async function main() {
         }
     }
 
-    // 6. Create Subjects (OBEC Standards) - Assigned to classrooms and teachers
+    // 7. Create Subjects
     const subjects = [
         { name: 'ภาษาไทย', code: 'ท' },
         { name: 'คณิตศาสตร์', code: 'ค' },
@@ -125,7 +131,6 @@ async function main() {
         { name: 'ภาษาอังกฤษ', code: 'อ' }
     ];
 
-    console.log('Generating subjects for each classroom...');
     for (const classroom of classrooms) {
         for (let i = 0; i < subjects.length; i++) {
             const s = subjects[i];
@@ -141,7 +146,7 @@ async function main() {
         }
     }
 
-    // 7. Create Students (250 Students)
+    // 8. Create Students (250 Students)
     console.log('Generating 250 students...');
     const studentCountPerRoom = Math.floor(250 / classrooms.length);
     let currentStudentTotal = 0;
@@ -170,12 +175,12 @@ async function main() {
         }
     }
 
-    console.log(`Seed completed: 15 Teachers, 12 Classrooms, 250 Students created.`);
+    console.log(`Seed completed successfully: 1 Admin, 15 Teachers, 12 Classrooms, 250 Students.`);
 }
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('Seed error:', e.message);
         process.exit(1);
     })
     .finally(async () => {
