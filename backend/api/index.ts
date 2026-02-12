@@ -21,7 +21,8 @@ async function bootstrap() {
             logger: ['error', 'warn', 'log'],
         });
 
-        app.setGlobalPrefix('api');
+        // NOTE: We REMOVED setGlobalPrefix('api') here to make the bridge prefix-agnostic.
+        // We will normalize the URL in the export handler instead.
 
         app.use(cookieParser());
 
@@ -64,11 +65,11 @@ async function bootstrap() {
 }
 
 export default async (req: any, res: any) => {
-    // Normalize URL for NestJS Global Prefix
-    // If Vercel rewrites /api/foo to this function, req.url might be /foo or /api/foo
-    // We want to ensure it looks like /api/foo for NestJS to match the prefix.
-    if (req.url && !req.url.startsWith('/api')) {
-        req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
+    // Normalize URL for NestJS
+    // We want to STRIP '/api' because NestJS routes are defined without it (since we removed the prefix)
+    if (req.url && req.url.startsWith('/api')) {
+        req.url = req.url.replace(/^\/api/, '');
+        if (!req.url.startsWith('/')) req.url = '/' + req.url;
     }
 
     const serverInstance = await bootstrap();
