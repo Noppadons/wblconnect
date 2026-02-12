@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 // Force use of direct URL for seeding to avoid PgBouncer issues
 if (process.env.DIRECT_URL) {
