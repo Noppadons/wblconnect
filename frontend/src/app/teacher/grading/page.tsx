@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { BookOpen, ChevronRight, Plus, Clock, ChevronDown, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { 
+  BookOpen, 
+  ChevronRight, 
+  Plus, 
+  Clock, 
+  ChevronDown, 
+  AlertCircle, 
+  CheckCircle2,
+  Upload,
+  X
+} from 'lucide-react';
+
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
