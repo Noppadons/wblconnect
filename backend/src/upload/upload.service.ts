@@ -30,8 +30,14 @@ export class UploadService {
             });
 
         if (error) {
-            console.error('Supabase Upload Error:', error);
-            throw new InternalServerErrorException('ไม่สามารถอัปโหลดไฟล์ไปยัง Cloud Storage ได้');
+            console.error('--- Supabase Upload Error Details ---');
+            console.error('Error Code:', (error as any).code);
+            console.error('Error Message:', error.message);
+            console.error('Error Status:', (error as any).status);
+            console.error('Full Error:', JSON.stringify(error, null, 2));
+            console.error('--------------------------------------');
+
+            throw new InternalServerErrorException(`ไม่สามารถอัปโหลดไฟล์ไปยัง Cloud Storage ได้: ${error.message}`);
         }
 
         // Get Public URL
