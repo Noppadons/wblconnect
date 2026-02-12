@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { SchoolService } from '../school/school.service';
 
 @Injectable()
@@ -8,7 +8,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private schoolService: SchoolService,
-  ) {}
+  ) { }
 
   async getDashboardStats() {
     const now = new Date();
@@ -519,14 +519,14 @@ export class AdminService {
       const avgScore =
         graded.length > 0
           ? Math.round(
-              graded.reduce(
-                (sum, sub) =>
-                  sum +
-                  ((sub.points || 0) / (sub.assignment?.maxPoints || 100)) *
-                    100,
-                0,
-              ) / graded.length,
-            )
+            graded.reduce(
+              (sum, sub) =>
+                sum +
+                ((sub.points || 0) / (sub.assignment?.maxPoints || 100)) *
+                100,
+              0,
+            ) / graded.length,
+          )
           : 0;
 
       // Risk flags
@@ -572,26 +572,26 @@ export class AdminService {
     const avgGpa =
       totalStudents > 0
         ? Math.round(
-            (studentSummaries.reduce((s, st) => s + st.gpa, 0) /
-              totalStudents) *
-              100,
-          ) / 100
+          (studentSummaries.reduce((s, st) => s + st.gpa, 0) /
+            totalStudents) *
+          100,
+        ) / 100
         : 0;
     const avgAttendanceRate =
       totalStudents > 0
         ? Math.round(
-            (studentSummaries.reduce((s, st) => s + st.attendance.rate, 0) /
-              totalStudents) *
-              100,
-          ) / 100
+          (studentSummaries.reduce((s, st) => s + st.attendance.rate, 0) /
+            totalStudents) *
+          100,
+        ) / 100
         : 0;
     const avgBehaviorScore =
       totalStudents > 0
         ? Math.round(
-            (studentSummaries.reduce((s, st) => s + st.behavior.score, 0) /
-              totalStudents) *
-              100,
-          ) / 100
+          (studentSummaries.reduce((s, st) => s + st.behavior.score, 0) /
+            totalStudents) *
+          100,
+        ) / 100
         : 0;
     const atRiskCount = studentSummaries.filter((s) => s.isAtRisk).length;
 
