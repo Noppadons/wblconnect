@@ -2,7 +2,7 @@ import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from '../src/app.module.js';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
-import * as express from 'express';
+import express from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter.js';
@@ -22,10 +22,12 @@ async function bootstrap() {
         app.setGlobalPrefix('api');
         app.use(cookieParser());
 
-        // Security Hardening - use 'any' to bypass strict nodenext/type issues in the bridge
+        // Security Hardening - use any/ignore to bypass strict nodenext/type issues
+        // @ts-ignore
         app.use((helmet as any)({
             crossOriginResourcePolicy: { policy: "cross-origin" }
         }));
+
         app.useGlobalInterceptors(new NoCacheInterceptor());
 
         app.enableCors({
