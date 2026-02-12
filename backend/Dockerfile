@@ -36,4 +36,5 @@ EXPOSE 3001
 ENV NODE_ENV=production
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/src/main.js"]
+
