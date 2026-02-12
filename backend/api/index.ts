@@ -1,84 +1,68 @@
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from '../src/app.module.js';
 import { ValidationPipe } from '@nestjs/common';
-import * as helmetModule from 'helmet';
-import * as expressModule from 'express';
+import helmet from 'helmet';
+import express from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter.js';
 import { NoCacheInterceptor } from '../src/common/interceptors/no-cache.interceptor.js';
 import { ExpressAdapter } from '@nestjs/platform-express';
 
-// Robust import resolution for CommonJS modules in nodenext
-const express = (expressModule as any).default || expressModule;
-const helmet = (helmetModule as any).default || helmetModule;
-
 const server = express();
 
 let app: any;
 
 async function bootstrap() {
-    console.log('--- VERCEL BACKEND BOOTSTRAP START ---');
     if (!app) {
-        try {
-            app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
-                rawBody: true,
-            });
+        app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+            rawBody: true,
+            logger: ['error', 'warn', 'log'],
+        });
 
-            app.setGlobalPrefix('api');
-            app.use(cookieParser());
+        // NOTE: We don't use setGlobalPrefix('api') here because Vercel handles the /api route mapping.
+        // If the request is /api/auth/login, Vercel routes it here, and if we have 'api' prefix, 
+        // Nest would look for /api/api/auth/login.
 
-            // Security Hardening
-            if (typeof helmet === 'function') {
-                app.use(helmet({
-                    crossOriginResourcePolicy: { policy: "cross-origin" }
-                }));
-            } else if (helmet && (helmet as any).default) {
-                app.use((helmet as any).default({
-                    crossOriginResourcePolicy: { policy: "cross-origin" }
-                }));
-            }
+        app.use(cookieParser());
 
-            app.useGlobalInterceptors(new NoCacheInterceptor());
+        // Debugging middleware
+        app.use((req: any, res: any, next: any) => {
+            console.log(`[Vercel Bridge] Request: ${req.method} ${req.url}`);
+            next();
+        });
 
-            app.enableCors({
-                origin: true,
-                credentials: true,
-            });
+        // Security Hardening
+        app.use((helmet as any)({
+            crossOriginResourcePolicy: { policy: "cross-origin" }
+        }));
 
-            // Serve static files (Fallback)
-            app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+        app.useGlobalInterceptors(new NoCacheInterceptor());
 
-            const httpAdapterHost = app.get(HttpAdapterHost);
-            app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
+        app.enableCors({
+            origin: true,
+            credentials: true,
+        });
 
-            app.useGlobalPipes(new ValidationPipe({
-                whitelist: true,
-                transform: true,
-                forbidNonWhitelisted: true,
-            }));
+        // Serve static files (Fallback)
+        app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-            await app.init();
-            console.log('--- VERCEL BACKEND BOOTSTRAP SUCCESS ---');
-        } catch (err: any) {
-            console.error('--- VERCEL BACKEND BOOTSTRAP FAILED ---');
-            console.error(err);
-            throw err;
-        }
+        const httpAdapterHost = app.get(HttpAdapterHost);
+        app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
+
+        app.useGlobalPipes(new ValidationPipe({
+            whitelist: true,
+            transform: true,
+            forbidNonWhitelisted: true,
+        }));
+
+        await app.init();
+        console.log('[Vercel Bridge] NestJS App Initialized');
     }
     return server;
 }
 
 export default async (req: any, res: any) => {
-    try {
-        const serverInstance = await bootstrap();
-        serverInstance(req, res);
-    } catch (err: any) {
-        console.error('SERVERLESS FUNCTION CRASH:', err.message);
-        res.status(500).json({
-            error: 'Internal Server Error',
-            message: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        });
-    }
+    const serverInstance = await bootstrap();
+    serverInstance(req, res);
 };
