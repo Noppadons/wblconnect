@@ -1,14 +1,15 @@
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
-import { AppModule } from '../src/app.module.js';
+import { AppModule } from '../src/app.module';
 import { ValidationPipe } from '@nestjs/common';
-import helmet from 'helmet';
+import * as helmetModule from 'helmet';
 import express from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
-import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter.js';
-import { NoCacheInterceptor } from '../src/common/interceptors/no-cache.interceptor.js';
+import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
+import { NoCacheInterceptor } from '../src/common/interceptors/no-cache.interceptor';
 import { ExpressAdapter } from '@nestjs/platform-express';
 
+const helmet = (helmetModule as any).default || helmetModule;
 const server = express();
 
 let app: any;
@@ -20,9 +21,7 @@ async function bootstrap() {
             logger: ['error', 'warn', 'log'],
         });
 
-        // NOTE: We don't use setGlobalPrefix('api') here because Vercel handles the /api route mapping.
-        // If the request is /api/auth/login, Vercel routes it here, and if we have 'api' prefix, 
-        // Nest would look for /api/api/auth/login.
+        app.setGlobalPrefix('api');
 
         app.use(cookieParser());
 
@@ -33,9 +32,11 @@ async function bootstrap() {
         });
 
         // Security Hardening
-        app.use((helmet as any)({
-            crossOriginResourcePolicy: { policy: "cross-origin" }
-        }));
+        if (typeof helmet === 'function') {
+            app.use(helmet({
+                crossOriginResourcePolicy: { policy: "cross-origin" }
+            }));
+        }
 
         app.useGlobalInterceptors(new NoCacheInterceptor());
 
@@ -63,6 +64,13 @@ async function bootstrap() {
 }
 
 export default async (req: any, res: any) => {
+    // Normalize URL for NestJS Global Prefix
+    // If Vercel rewrites /api/foo to this function, req.url might be /foo or /api/foo
+    // We want to ensure it looks like /api/foo for NestJS to match the prefix.
+    if (req.url && !req.url.startsWith('/api')) {
+        req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
+    }
+
     const serverInstance = await bootstrap();
     serverInstance(req, res);
 };
