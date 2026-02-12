@@ -1,0 +1,196 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { FileText, Clock, CheckCircle2, AlertCircle, Upload, Send, BookOpen, MessageSquare, Star } from 'lucide-react';
+import api from '@/lib/api';
+import AppShell from '@/components/Layout/AppShell';
+import Modal from '@/components/Common/Modal';
+import { toast } from 'sonner';
+import { STUDENT_SIDEBAR } from '@/lib/sidebar';
+
+export default function StudentAssignmentsPage() {
+    const [assignments, setAssignments] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'PENDING' | 'SUBMITTED'>('PENDING');
+    const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
+    const [viewAssignment, setViewAssignment] = useState<any | null>(null);
+    const [submissionContent, setSubmissionContent] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) setUser(JSON.parse(storedUser));
+        fetchMyAssignments();
+    }, []);
+
+    const fetchMyAssignments = async () => {
+        try { const res = await api.get('/assessment/my-assignments'); setAssignments(res.data); }
+        catch (err) { console.error(err); } finally { setLoading(false); }
+    };
+
+    const handleSubmit = async () => {
+        if (!selectedAssignment || !submissionContent.trim()) return;
+        setSubmitting(true);
+        try {
+            const userRes = await api.get('/auth/profile');
+            const studentId = userRes.data.student?.id;
+            if (!studentId) throw new Error("Student ID not found");
+            await api.post('/assessment/submit', { studentId, assignmentId: selectedAssignment.id, content: submissionContent });
+            setSubmitSuccess(true);
+            setTimeout(() => { setSubmitSuccess(false); setSelectedAssignment(null); setSubmissionContent(''); fetchMyAssignments(); }, 1500);
+        } catch (err) { console.error(err); toast.error('เกิดข้อผิดพลาดในการส่งงาน'); }
+        finally { setSubmitting(false); }
+    };
+
+    const pendingAssignments = assignments.filter(a => !a.mySubmission);
+    const submittedAssignments = assignments.filter(a => a.mySubmission);
+    const displayList = activeTab === 'PENDING' ? pendingAssignments : submittedAssignments;
+
+    const isOverdue = (dueDate: string) => dueDate && new Date(dueDate) < new Date();
+    const isDueSoon = (dueDate: string) => {
+        if (!dueDate) return false;
+        const diff = new Date(dueDate).getTime() - Date.now();
+        return diff > 0 && diff < 2 * 24 * 60 * 60 * 1000;
+    };
+
+    return (
+        <AppShell role="STUDENT" sidebarItems={STUDENT_SIDEBAR} user={user} pageTitle="งานที่ได้รับ" pageSubtitle={`${pendingAssignments.length} รอส่ง • ${submittedAssignments.length} ส่งแล้ว`}>
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg max-w-sm mb-4">
+                <button onClick={() => setActiveTab('PENDING')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'PENDING' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                    รอส่ง ({pendingAssignments.length})
+                </button>
+                <button onClick={() => setActiveTab('SUBMITTED')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'SUBMITTED' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                    ส่งแล้ว ({submittedAssignments.length})
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center justify-center py-32">
+                    <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {displayList.map((a: any) => {
+                        const overdue = isOverdue(a.dueDate);
+                        const dueSoon = isDueSoon(a.dueDate);
+                        const isGraded = a.mySubmission?.status === 'GRADED';
+
+                        return (
+                            <div key={a.id} className="card p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="text-sm font-bold text-text-primary truncate">{a.title}</h3>
+                                            <span className="badge-primary text-xs shrink-0">{a.subject?.code || a.subject?.name}</span>
+                                        </div>
+                                        {a.description && (
+                                            <p className="text-xs text-text-muted mb-2 line-clamp-2">{a.description}</p>
+                                        )}
+                                        <div className="flex items-center gap-4 text-xs text-text-muted flex-wrap">
+                                            <span className="font-semibold text-text-secondary">{a.maxPoints} คะแนน</span>
+                                            {a.dueDate && (
+                                                <span className={`flex items-center gap-1 ${overdue ? 'text-red-600 font-semibold' : dueSoon ? 'text-amber-600 font-semibold' : ''}`}>
+                                                    {overdue ? <AlertCircle size={12} /> : <Clock size={12} />}
+                                                    {overdue ? 'เลยกำหนด' : 'กำหนดส่ง'} {new Date(a.dueDate).toLocaleDateString('th-TH')}
+                                                </span>
+                                            )}
+                                            {isGraded && (
+                                                <span className="flex items-center gap-1 text-green-600 font-semibold">
+                                                    <Star size={12} /> {a.mySubmission.points}/{a.maxPoints}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {/* Feedback from teacher */}
+                                        {isGraded && a.mySubmission.feedback && (
+                                            <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                                                <p className="text-xs text-green-800 flex items-start gap-1.5">
+                                                    <MessageSquare size={12} className="shrink-0 mt-0.5" />
+                                                    <span><strong>ครูให้ feedback:</strong> {a.mySubmission.feedback}</span>
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="shrink-0">
+                                        {activeTab === 'PENDING' ? (
+                                            <button onClick={() => { setSelectedAssignment(a); setSubmissionContent(''); }} className="btn-primary text-xs py-1.5 px-3">
+                                                <Send size={13} /> ส่งงาน
+                                            </button>
+                                        ) : (
+                                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${isGraded ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                {isGraded ? <><CheckCircle2 size={13} /> ตรวจแล้ว</> : <><Clock size={13} /> รอตรวจ</>}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {displayList.length === 0 && (
+                        <div className="py-16 text-center card">
+                            <FileText size={40} className="mx-auto text-text-muted mb-3" />
+                            <p className="text-text-secondary font-semibold">
+                                {activeTab === 'PENDING' ? 'ไม่มีงานที่ต้องส่ง' : 'ยังไม่มีประวัติการส่งงาน'}
+                            </p>
+                            <p className="text-sm text-text-muted mt-1">
+                                {activeTab === 'PENDING' ? 'ส่งงานครบหมดแล้ว เก่งมาก!' : 'เมื่อส่งงานแล้วจะแสดงที่นี่'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Submission Modal */}
+            <Modal isOpen={!!selectedAssignment} onClose={() => { setSelectedAssignment(null); setSubmitSuccess(false); }} title="ส่งงาน" subtitle={selectedAssignment?.title}>
+                {submitSuccess ? (
+                    <div className="p-6 flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
+                            <CheckCircle2 size={32} />
+                        </div>
+                        <h3 className="text-lg font-bold text-text-primary mb-1">ส่งงานสำเร็จ!</h3>
+                        <p className="text-sm text-text-muted">งานถูกส่งให้ครูเรียบร้อยแล้ว</p>
+                    </div>
+                ) : (
+                    <div className="p-6 space-y-4">
+                        {/* Assignment details */}
+                        {selectedAssignment?.description && (
+                            <div className="px-4 py-3 bg-slate-50 rounded-lg border border-border">
+                                <p className="text-xs font-semibold text-text-secondary mb-1 flex items-center gap-1"><BookOpen size={12} /> รายละเอียดงาน</p>
+                                <p className="text-sm text-text-primary">{selectedAssignment.description}</p>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-text-muted">
+                            <span className="font-semibold text-text-secondary">{selectedAssignment?.maxPoints} คะแนน</span>
+                            {selectedAssignment?.dueDate && (
+                                <span className={`flex items-center gap-1 ${isOverdue(selectedAssignment.dueDate) ? 'text-red-600 font-semibold' : ''}`}>
+                                    <Clock size={12} /> กำหนดส่ง {new Date(selectedAssignment.dueDate).toLocaleDateString('th-TH')}
+                                </span>
+                            )}
+                        </div>
+                        <div>
+                            <label className="label">ข้อความถึงครู</label>
+                            <textarea value={submissionContent} onChange={(e) => setSubmissionContent(e.target.value)}
+                                placeholder="พิมพ์เนื้อหาการบ้าน หรือข้อความถึงครู..."
+                                className="input-field h-32 resize-none" />
+                        </div>
+                        <div className="border-2 border-dashed border-border rounded-xl p-4 text-center opacity-60">
+                            <Upload className="mx-auto text-text-muted mb-1" size={20} />
+                            <p className="text-xs text-text-muted">ระบบแนบไฟล์ยังไม่เปิดใช้งาน</p>
+                        </div>
+                        <div className="flex gap-3 pt-4 border-t border-border">
+                            <button onClick={() => setSelectedAssignment(null)} className="btn-secondary flex-1">ยกเลิก</button>
+                            <button onClick={handleSubmit} disabled={!submissionContent.trim() || submitting} className="btn-primary flex-1 disabled:opacity-50">
+                                {submitting ? 'กำลังส่ง...' : <><Send size={16} /> ยืนยันส่งงาน</>}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+        </AppShell>
+    );
+}

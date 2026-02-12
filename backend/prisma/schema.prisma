@@ -1,0 +1,231 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id            String         @id @default(uuid())
+  name          String
+  phone         String?
+  email         String?
+  website       String?
+  academicYears AcademicYear[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model AcademicYear {
+  id        String     @id @default(uuid())
+  year      Int // e.g. 2567
+  semesters Semester[]
+  schoolId  String
+  school    School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+model Semester {
+  id             String       @id @default(uuid())
+  term           Int // 1 or 2
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  classrooms     Classroom[]
+  subjects       Subject[]
+}
+
+model GradeLevel {
+  id         String      @id @default(uuid())
+  level      String // e.g. "ม.3"
+  classrooms Classroom[]
+}
+
+model Classroom {
+  id                String      @id @default(uuid())
+  roomNumber        String // e.g. "2" รวมเป็น "ม.3/2"
+  gradeId           String
+  semesterId        String
+  grade             GradeLevel  @relation(fields: [gradeId], references: [id])
+  semester          Semester    @relation(fields: [semesterId], references: [id])
+  homeroomTeacherId String?     @unique
+  homeroomTeacher   Teacher?    @relation("Homeroom", fields: [homeroomTeacherId], references: [id])
+  students          Student[]
+  subjects          Subject[]
+  assignments       Assignment[]
+  schedules         Schedule[]
+  lineToken         String? // Token สำหรับแจ้งเตือนกลุ่มห้องเรียน
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([semesterId])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      Role     @default(STUDENT)
+  teacher   Teacher?
+  student   Student?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id              String        @id @default(uuid())
+  studentCode     String        @unique
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroomId     String
+  classroom       Classroom     @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  attendance      Attendance[]
+  submissions     Submission[]
+  behaviorLogs    BehaviorLog[]
+  enrolledSubjects StudentSubject[]
+  parentLineToken String? // สำหรับแจ้งเตือนผู้ปกครองรายบุคคล
+  gpa             Float    @default(0.00)
+
+  @@index([classroomId])
+}
+
+model Teacher {
+  id            String     @id @default(uuid())
+  userId        String     @unique
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  homeroomClass Classroom? @relation("Homeroom")
+  subjects      Subject[]
+  schedules     Schedule[]
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classroomId String?
+  classroom   Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  assignments Assignment[]
+  schedules   Schedule[]
+  credit      Float       @default(1.5)
+  semesterId  String?
+  semester    Semester?   @relation(fields: [semesterId], references: [id])
+  students    StudentSubject[]
+}
+
+model Assignment {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  maxPoints   Float
+  dueDate     DateTime?
+  subjectId   String
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  classroom   Classroom?   @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  classroomId String?      // This matches the AssessmentService implementation
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  points       Float?
+  feedback     String?
+  status       String     @default("PENDING") // PENDING, SUBMITTED, GRADED
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([studentId, assignmentId]) // Added for bulkUpdateGrades upsert
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  date      DateTime         @default(now())
+  status    AttendanceStatus
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  period    Int // 1-8
+  remarks   String?
+
+  @@index([date])
+  @@index([studentId])
+  @@index([studentId, date, period])
+}
+
+model BehaviorLog {
+  id        String   @id @default(uuid())
+  type      String // POSITIVE, NEGATIVE
+  content   String
+  points    Int      @default(0)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  type      String // ANNOUNCEMENT, ALERT
+  targetId  String? // ID ของเป้าหมาย (Classroom/Student/Global)
+  imageUrl  String?
+  createdAt DateTime @default(now())
+}
+
+model StudentSubject {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grade     Float?   // 0 - 4.0
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, subjectId])
+}
+
+model Schedule {
+  id          String    @id @default(uuid())
+  dayOfWeek   String    // MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY
+  periodStart Int       // 1-8
+  periodEnd   Int       // 1-8
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([dayOfWeek, periodStart, classroomId])
+  @@unique([dayOfWeek, periodStart, teacherId])
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  LEAVE
+}
