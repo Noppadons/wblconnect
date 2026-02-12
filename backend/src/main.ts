@@ -34,10 +34,10 @@ async function bootstrap() {
   app.useGlobalInterceptors(new NoCacheInterceptor());
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  origin: true,
+  credentials: true,
+});
+
 
   // Serve static files from uploads folder
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
