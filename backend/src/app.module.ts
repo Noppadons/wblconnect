@@ -35,10 +35,12 @@ import { UploadModule } from './upload/upload.module';
     ScheduleModule,
     TeacherModule,
     UploadModule,
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [
@@ -49,4 +51,4 @@ import { UploadModule } from './upload/upload.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

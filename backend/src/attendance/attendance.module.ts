@@ -7,6 +7,6 @@ import { CommunicationModule } from '../communication/communication.module';
 @Module({
   imports: [PrismaModule, CommunicationModule],
   providers: [AttendanceService],
-  controllers: [AttendanceController]
+  controllers: [AttendanceController],
 })
-export class AttendanceModule { }
+export class AttendanceModule {}

@@ -4,139 +4,132 @@ import { LineService } from './line.service';
 
 @Injectable()
 export class NotificationService {
-    constructor(
-        private prisma: PrismaService,
-        private lineService: LineService
-    ) { }
+  constructor(
+    private prisma: PrismaService,
+    private lineService: LineService,
+  ) {}
 
-    async createNotification(data: {
-        title: string;
-        content: string;
-        type: string;
-        targetId?: string;
-        imageUrl?: string;
-        isPinned?: boolean;
-        expiresAt?: string;
-        sendLine?: boolean;
-    }) {
-        const { sendLine, expiresAt, ...rest } = data;
+  async createNotification(data: {
+    title: string;
+    content: string;
+    type: string;
+    targetId?: string;
+    imageUrl?: string;
+    isPinned?: boolean;
+    expiresAt?: string;
+    sendLine?: boolean;
+  }) {
+    const { sendLine, expiresAt, ...rest } = data;
 
-        const notification = await this.prisma.notification.create({
-            data: {
-                ...rest,
-                expiresAt: expiresAt ? new Date(expiresAt) : null,
-            }
-        });
+    const notification = await this.prisma.notification.create({
+      data: {
+        ...rest,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      },
+    });
 
-        if (sendLine) {
-            try {
-                const lineMsg = `🔔 ${data.title}\n\n${data.content}`;
-                await this.lineService.broadcastMessage(lineMsg);
-            } catch (err) {
-                console.error('[NotificationService] Failed to send LINE broadcast:', err);
-            }
-        }
-
-        return notification;
+    if (sendLine) {
+      try {
+        const lineMsg = `🔔 ${data.title}\n\n${data.content}`;
+        await this.lineService.broadcastMessage(lineMsg);
+      } catch (err) {
+        console.error(
+          '[NotificationService] Failed to send LINE broadcast:',
+          err,
+        );
+      }
     }
 
-    async getNotifications(userId: string, targetId?: string | null) {
-        const notifications = await this.prisma.notification.findMany({
-            where: {
-                AND: [
-                    {
-                        OR: [
-                            { targetId: null }, // Global
-                            { targetId }
-                        ]
-                    },
-                    {
-                        OR: [
-                            { expiresAt: null },
-                            { expiresAt: { gt: new Date() } }
-                        ]
-                    }
-                ]
-            },
-            include: {
-                readBy: {
-                    where: { userId }
-                }
-            },
-            orderBy: [
-                { isPinned: 'desc' },
-                { createdAt: 'desc' }
+    return notification;
+  }
+
+  async getNotifications(userId: string, targetId?: string | null) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { targetId: null }, // Global
+              { targetId },
             ],
-            take: 30
-        });
+          },
+          {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+        ],
+      },
+      include: {
+        readBy: {
+          where: { userId },
+        },
+      },
+      orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+      take: 30,
+    });
 
-        // Map to include a simple 'isRead' boolean for the frontend
-        return notifications.map(n => ({
-            ...n,
-            isRead: n.readBy.length > 0 && n.readBy[0].isRead
-        }));
-    }
+    // Map to include a simple 'isRead' boolean for the frontend
+    return notifications.map((n) => ({
+      ...n,
+      isRead: n.readBy.length > 0 && n.readBy[0].isRead,
+    }));
+  }
 
-    async markAsRead(notificationId: string, userId: string) {
-        console.log(`[NotificationService] Attempting to mark as read: note=${notificationId}, user=${userId}`);
-        if (!notificationId || !userId) {
-            console.error('[NotificationService] Missing ID in markAsRead');
-            throw new Error('NotificationId and UserId are required');
-        }
-        try {
-            const res = await this.prisma.userNotification.upsert({
-                where: {
-                    userId_notificationId: { userId, notificationId }
-                },
-                update: {
-                    isRead: true,
-                    readAt: new Date()
-                },
-                create: {
-                    userId,
-                    notificationId,
-                    isRead: true,
-                    readAt: new Date()
-                }
-            });
-            console.log('[NotificationService] Successfully marked as read');
-            return res;
-        } catch (err) {
-            console.error('[NotificationService] Prisma error in markAsRead:', err);
-            throw err;
-        }
+  async markAsRead(notificationId: string, userId: string) {
+    console.log(
+      `[NotificationService] Attempting to mark as read: note=${notificationId}, user=${userId}`,
+    );
+    if (!notificationId || !userId) {
+      console.error('[NotificationService] Missing ID in markAsRead');
+      throw new Error('NotificationId and UserId are required');
     }
+    try {
+      const res = await this.prisma.userNotification.upsert({
+        where: {
+          userId_notificationId: { userId, notificationId },
+        },
+        update: {
+          isRead: true,
+          readAt: new Date(),
+        },
+        create: {
+          userId,
+          notificationId,
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+      console.log('[NotificationService] Successfully marked as read');
+      return res;
+    } catch (err) {
+      console.error('[NotificationService] Prisma error in markAsRead:', err);
+      throw err;
+    }
+  }
 
-    async getUnreadCount(userId: string, targetId?: string | null) {
-        const notifications = await this.prisma.notification.findMany({
-            where: {
-                AND: [
-                    {
-                        OR: [
-                            { targetId: null },
-                            { targetId }
-                        ]
-                    },
-                    {
-                        OR: [
-                            { expiresAt: null },
-                            { expiresAt: { gt: new Date() } }
-                        ]
-                    },
-                    {
-                        readBy: {
-                            none: { userId, isRead: true }
-                        }
-                    }
-                ]
-            }
-        });
-        return notifications.length;
-    }
+  async getUnreadCount(userId: string, targetId?: string | null) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        AND: [
+          {
+            OR: [{ targetId: null }, { targetId }],
+          },
+          {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          {
+            readBy: {
+              none: { userId, isRead: true },
+            },
+          },
+        ],
+      },
+    });
+    return notifications.length;
+  }
 
-    async deleteNotification(id: string) {
-        return this.prisma.notification.delete({
-            where: { id }
-        });
-    }
+  async deleteNotification(id: string) {
+    return this.prisma.notification.delete({
+      where: { id },
+    });
+  }
 }

@@ -6,6 +6,6 @@ import { AssessmentModule } from '../assessment/assessment.module';
 @Module({
   imports: [AssessmentModule],
   providers: [ReportsService],
-  controllers: [ReportsController]
+  controllers: [ReportsController],
 })
-export class ReportsModule { }
+export class ReportsModule {}

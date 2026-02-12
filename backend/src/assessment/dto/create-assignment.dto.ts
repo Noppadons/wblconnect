@@ -1,65 +1,65 @@
 import { IsString, IsNumber, IsOptional, IsDateString } from 'class-validator';
 
 export class CreateAssignmentDto {
-    @IsString()
-    title: string;
+  @IsString()
+  title: string;
 
-    @IsOptional()
-    @IsString()
-    description?: string;
+  @IsOptional()
+  @IsString()
+  description?: string;
 
-    @IsNumber()
-    maxPoints: number;
+  @IsNumber()
+  maxPoints: number;
 
-    @IsString()
-    subjectId: string;
+  @IsString()
+  subjectId: string;
 
-    @IsOptional()
-    @IsString()
-    classroomId?: string;
+  @IsOptional()
+  @IsString()
+  classroomId?: string;
 
-    @IsOptional()
-    @IsDateString()
-    dueDate?: string;
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
 
-    @IsOptional()
-    @IsString({ each: true })
-    attachments?: string[];
+  @IsOptional()
+  @IsString({ each: true })
+  attachments?: string[];
 }
 
 export class SubmitAssignmentDto {
-    @IsString()
-    studentId: string;
+  @IsString()
+  studentId: string;
 
-    @IsString()
-    assignmentId: string;
+  @IsString()
+  assignmentId: string;
 
-    @IsOptional()
-    @IsString()
-    content?: string;
+  @IsOptional()
+  @IsString()
+  content?: string;
 
-    @IsOptional()
-    @IsString({ each: true })
-    attachments?: string[];
+  @IsOptional()
+  @IsString({ each: true })
+  attachments?: string[];
 }
 
 export class GradeSubmissionDto {
-    @IsNumber()
-    points: number;
+  @IsNumber()
+  points: number;
 
-    @IsOptional()
-    @IsString()
-    feedback?: string;
+  @IsOptional()
+  @IsString()
+  feedback?: string;
 }
 
 export class BulkGradeItemDto {
-    @IsString()
-    studentId: string;
+  @IsString()
+  studentId: string;
 
-    @IsNumber()
-    points: number;
+  @IsNumber()
+  points: number;
 
-    @IsOptional()
-    @IsString()
-    feedback?: string;
+  @IsOptional()
+  @IsString()
+  feedback?: string;
 }

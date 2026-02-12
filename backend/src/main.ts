@@ -20,26 +20,29 @@ async function bootstrap() {
 
   // STARTUP VALIDATION: Ensure critical env vars are set
   const requiredEnv = ['JWT_SECRET', 'DATABASE_URL'];
-  const missingEnv = requiredEnv.filter(env => !process.env[env]);
+  const missingEnv = requiredEnv.filter((env) => !process.env[env]);
 
   if (missingEnv.length > 0) {
-    console.error(`❌ CRITICAL ERROR: Missing environment variables: ${missingEnv.join(', ')}`);
+    console.error(
+      `❌ CRITICAL ERROR: Missing environment variables: ${missingEnv.join(', ')}`,
+    );
     process.exit(1);
   }
 
   app.use(cookieParser());
 
   // Security Hardening - Adjusted for static file serving
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-  }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.useGlobalInterceptors(new NoCacheInterceptor());
 
   app.enableCors({
     origin: true,
     credentials: true,
   });
-
 
   // Serve static files from uploads folder
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
@@ -48,11 +51,13 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
   // Enable Global Validation Pipe
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Stripe away properties not in DTO
-    transform: true, // Automatically transform payloads to DTO instances
-    forbidNonWhitelisted: true, // Throw error if extra properties are sent
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Stripe away properties not in DTO
+      transform: true, // Automatically transform payloads to DTO instances
+      forbidNonWhitelisted: true, // Throw error if extra properties are sent
+    }),
+  );
 
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
 }

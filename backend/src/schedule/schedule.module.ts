@@ -6,6 +6,6 @@ import { PrismaModule } from '../prisma/prisma.module';
 @Module({
   imports: [PrismaModule],
   providers: [ScheduleService],
-  controllers: [ScheduleController]
+  controllers: [ScheduleController],
 })
-export class ScheduleModule { }
+export class ScheduleModule {}
