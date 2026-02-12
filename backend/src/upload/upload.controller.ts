@@ -7,9 +7,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UploadService } from './upload.service';
 
 const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_DOC_EXTENSIONS = [
@@ -28,19 +29,13 @@ const ALLOWED_DOC_EXTENSIONS = [
 
 @Controller('upload')
 export class UploadController {
+  constructor(private readonly uploadService: UploadService) { }
+
   @Post('image')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, callback) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname).toLowerCase();
-          callback(null, `img-${uniqueSuffix}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();
@@ -59,8 +54,11 @@ export class UploadController {
   )
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('กรุณาเลือกไฟล์รูปภาพ');
+
+    const url = await this.uploadService.uploadFile(file, 'images');
+
     return {
-      url: `/uploads/${file.filename}`,
+      url: url,
       originalName: file.originalname,
       size: file.size,
     };
@@ -70,15 +68,7 @@ export class UploadController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, callback) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname).toLowerCase();
-          callback(null, `doc-${uniqueSuffix}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
       fileFilter: (req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();
@@ -95,11 +85,14 @@ export class UploadController {
   )
   async uploadDocument(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('กรุณาเลือกไฟล์');
+
+    const url = await this.uploadService.uploadFile(file, 'documents');
+
     return {
-      url: `/uploads/${file.filename}`,
+      url: url,
       originalName: file.originalname,
       size: file.size,
-      type: extname(file.filename).slice(1),
+      type: extname(file.originalname).slice(1),
     };
   }
 }

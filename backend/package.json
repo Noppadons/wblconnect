@@ -32,6 +32,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "6.19.2",
+    "@supabase/supabase-js": "^2.95.3",
     "@types/multer": "^2.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.17.4",
