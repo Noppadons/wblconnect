@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Users, Plus, Search, Pencil, Trash2, ChevronDown, GraduationCap, TrendingUp, AlertTriangle, Filter } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import ImageUpload from '@/components/Common/ImageUpload';
@@ -186,7 +186,7 @@ export default function AdminStudentsPage() {
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-lg bg-slate-100 text-text-muted flex items-center justify-center text-sm font-semibold overflow-hidden border border-border">
                                                             {s.user?.avatarUrl ? (
-                                                                <img src={s.user.avatarUrl.startsWith('http') ? s.user.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${s.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                                                                <img src={s.user.avatarUrl.startsWith('http') ? s.user.avatarUrl : `${API_URL}${s.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
                                                             ) : (
                                                                 s.user?.firstName?.[0] || 'S'
                                                             )}

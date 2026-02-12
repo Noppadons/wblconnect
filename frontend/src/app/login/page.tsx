@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Mail, Lock, LogIn, GraduationCap, BookOpen, Users, Clock, Shield, Eye, EyeOff } from "lucide-react";
+import { API_URL } from "@/lib/api";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -28,8 +29,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${apiUrl}/auth/login`, {
+            const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -38,7 +38,7 @@ export default function LoginPage() {
 
             if (!response.ok) {
                 let msg = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-                try { const errorData = await response.json(); msg = errorData.message || msg; } catch {}
+                try { const errorData = await response.json(); msg = errorData.message || msg; } catch { }
                 throw new Error(msg);
             }
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Save, ChevronLeft, CheckCircle2, AlertCircle, Search, X, Eye, FileSearch, Upload } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
@@ -75,7 +75,7 @@ export default function GradebookGridPage() {
                     {data.attachments?.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {data.attachments.map((url: string, i: number) => (
-                                <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`}
+                                <a key={i} href={`${API_URL}${url}`}
                                     target="_blank" rel="noreferrer"
                                     className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
                                     <Upload size={14} className="rotate-180" />
@@ -194,7 +194,7 @@ export default function GradebookGridPage() {
                                         <p className="text-[10px] font-bold text-text-muted uppercase mb-2">ไฟล์ที่แนบมา</p>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedSubmission.attachments.map((url: string, i: number) => (
-                                                <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`} target="_blank" rel="noreferrer"
+                                                <a key={i} href={`${API_URL}${url}`} target="_blank" rel="noreferrer"
                                                     className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
                                                     <Upload size={14} className="rotate-180" />
                                                     ไฟล์ที่ {i + 1}

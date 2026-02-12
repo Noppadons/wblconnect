@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Plus, FileText, Trash2, Download, Upload, Search, Filter, X, ChevronDown } from 'lucide-react';
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
 
@@ -154,7 +154,7 @@ export default function TeacherMaterialsPage() {
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{m.fileType || 'FILE'}</span>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${m.fileUrl}`} target="_blank" rel="noreferrer" title="ดาวน์โหลด"
+                                            <a href={`${API_URL}${m.fileUrl}`} target="_blank" rel="noreferrer" title="ดาวน์โหลด"
                                                 className="p-1.5 text-text-muted hover:text-primary transition-colors">
                                                 <Download size={16} />
                                             </a>

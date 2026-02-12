@@ -1,19 +1,19 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { 
-  BookOpen, 
-  ChevronRight, 
-  Plus, 
-  Clock, 
-  ChevronDown, 
-  AlertCircle, 
-  CheckCircle2,
-  Upload,
-  X
+import {
+    BookOpen,
+    ChevronRight,
+    Plus,
+    Clock,
+    ChevronDown,
+    AlertCircle,
+    CheckCircle2,
+    Upload,
+    X
 } from 'lucide-react';
 
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
@@ -175,7 +175,7 @@ export default function TeacherGradingOverview() {
                                             {asm.attachments?.length > 0 && (
                                                 <div className="flex flex-wrap gap-2 mb-3">
                                                     {asm.attachments.map((url: string, i: number) => (
-                                                        <a key={i} href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${url}`}
+                                                        <a key={i} href={`${API_URL}${url}`}
                                                             target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
                                                             className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
                                                         >

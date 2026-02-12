@@ -5,7 +5,7 @@ import { User, Award, CheckCircle2, Clock } from 'lucide-react';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import AiInsights from '@/components/Analytics/AiInsights';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import NotificationCenter from '@/components/Communication/NotificationCenter';
 import Timetable from '@/components/Academic/Timetable';
 import { STUDENT_SIDEBAR } from '@/lib/sidebar';
@@ -53,7 +53,7 @@ export default function StudentDashboard() {
                         <div className="flex flex-col md:flex-row items-center gap-5">
                             <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
                                 {student.user?.avatarUrl ? (
-                                    <img src={student.user.avatarUrl.startsWith('http') ? student.user.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${student.user.avatarUrl}`} alt="Profile" className="w-full h-full object-cover" />
+                                    <img src={student.user.avatarUrl.startsWith('http') ? student.user.avatarUrl : `${API_URL}${student.user.avatarUrl}`} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
                                     <User size={36} className="text-text-muted" />
                                 )}

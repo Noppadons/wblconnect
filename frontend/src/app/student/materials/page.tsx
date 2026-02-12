@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, FileText, Download, Filter, Search, ChevronDown } from 'lucide-react';
 import AppShell from '@/components/Layout/AppShell';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { STUDENT_SIDEBAR } from '@/lib/sidebar';
 
@@ -105,7 +105,7 @@ export default function StudentMaterialsPage() {
 
                                     <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                                         <span className="text-[10px] font-bold text-primary truncate max-w-[120px]">{m.subjectCode || 'ทั่วไป'}</span>
-                                        <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${m.fileUrl}`} target="_blank" rel="noreferrer"
+                                        <a href={`${API_URL}${m.fileUrl}`} target="_blank" rel="noreferrer"
                                             className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
                                             <Download size={14} /> ดาวน์โหลด
                                         </a>

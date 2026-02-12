@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Users, GraduationCap, CheckCircle2, XCircle, Clock, UserCheck, BookOpen, Smile, Frown, MessageSquare } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
@@ -84,7 +84,7 @@ export default function StudentDetailPage() {
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl font-bold text-text-secondary overflow-hidden shrink-0">
                         {student.user?.avatarUrl ? (
-                            <img src={student.user.avatarUrl.startsWith('http') ? student.user.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${student.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                            <img src={student.user.avatarUrl.startsWith('http') ? student.user.avatarUrl : `${API_URL}${student.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
                         ) : student.user?.firstName?.[0] || '?'}
                     </div>
                     <div>

@@ -13,6 +13,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import type { SidebarItem } from '@/lib/sidebar';
 import ChangePasswordModal from '../Auth/ChangePasswordModal';
+import { API_URL } from '@/lib/api';
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -156,7 +157,7 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                             <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden border border-border">
                                 {user?.avatarUrl ? (
                                     <img
-                                        src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${user.avatarUrl}`}
+                                        src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${API_URL}${user.avatarUrl}`}
                                         className="w-full h-full object-cover"
                                         alt=""
                                     />

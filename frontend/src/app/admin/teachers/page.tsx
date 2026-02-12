@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Briefcase, Plus, Search, Pencil, Trash2 } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import ImageUpload from '@/components/Common/ImageUpload';
@@ -121,7 +121,7 @@ export default function AdminTeachersPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold overflow-hidden border border-blue-100">
                                                         {t.user?.avatarUrl ? (
-                                                            <img src={t.user.avatarUrl.startsWith('http') ? t.user.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${t.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                                                            <img src={t.user.avatarUrl.startsWith('http') ? t.user.avatarUrl : `${API_URL}${t.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             t.user?.firstName?.[0] || 'T'
                                                         )}
@@ -164,37 +164,37 @@ export default function AdminTeachersPage() {
             )}
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTeacher ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มบุคลากรใหม่'} subtitle="กรอกข้อมูลให้ครบถ้วน">
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <ImageUpload value={formData.avatarUrl} onChange={(url) => setFormData({ ...formData, avatarUrl: url })} label="รูปโปรไฟล์" aspectRatio="any" />
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <ImageUpload value={formData.avatarUrl} onChange={(url) => setFormData({ ...formData, avatarUrl: url })} label="รูปโปรไฟล์" aspectRatio="any" />
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="label">ชื่อจริง</label>
-                                    <input required className="input-field" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="label">นามสกุล</label>
-                                    <input required className="input-field" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
-                                </div>
-                            </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">ชื่อจริง</label>
+                            <input required className="input-field" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
+                        </div>
+                        <div>
+                            <label className="label">นามสกุล</label>
+                            <input required className="input-field" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+                        </div>
+                    </div>
 
-                            <div>
-                                <label className="label">อีเมล</label>
-                                <input required type="email" placeholder="teacher@school.com" className="input-field" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                            </div>
+                    <div>
+                        <label className="label">อีเมล</label>
+                        <input required type="email" placeholder="teacher@school.com" className="input-field" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                    </div>
 
-                            {!editingTeacher && (
-                                <div>
-                                    <label className="label">รหัสผ่าน</label>
-                                    <input required type="password" placeholder="อย่างน้อย 6 ตัวอักษร" className="input-field" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-                                </div>
-                            )}
+                    {!editingTeacher && (
+                        <div>
+                            <label className="label">รหัสผ่าน</label>
+                            <input required type="password" placeholder="อย่างน้อย 6 ตัวอักษร" className="input-field" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                        </div>
+                    )}
 
-                            <div className="flex gap-3 pt-4 border-t border-border">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">ยกเลิก</button>
-                                <button type="submit" className="btn-primary flex-1">{editingTeacher ? 'บันทึก' : 'เพิ่มบุคลากร'}</button>
-                            </div>
-                        </form>
+                    <div className="flex gap-3 pt-4 border-t border-border">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary flex-1">ยกเลิก</button>
+                        <button type="submit" className="btn-primary flex-1">{editingTeacher ? 'บันทึก' : 'เพิ่มบุคลากร'}</button>
+                    </div>
+                </form>
             </Modal>
         </AppShell>
     );
