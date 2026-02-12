@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,22 +11,22 @@ import {
 
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) { }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.TEACHER, Role.ADMIN)
   @Post('check')
-  async checkAttendance(@Body() data: CheckAttendanceDto) {
-    return this.attendanceService.checkAttendance(data);
+  async checkAttendance(@Req() req: any, @Body() data: CheckAttendanceDto) {
+    return this.attendanceService.checkAttendance(req.user.id, data);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.TEACHER, Role.ADMIN)
   @Post('bulk-check')
-  async bulkCheckAttendance(@Body() data: BulkCheckAttendanceDto) {
+  async bulkCheckAttendance(@Req() req: any, @Body() data: BulkCheckAttendanceDto) {
     const results: any[] = [];
     for (const record of data.records) {
-      results.push(await this.attendanceService.checkAttendance(record));
+      results.push(await this.attendanceService.checkAttendance(req.user.id, record));
     }
     return { count: results.length, message: 'Attendance saved successfully' };
   }
@@ -35,6 +35,7 @@ export class AttendanceController {
   @Roles(Role.TEACHER, Role.ADMIN)
   @Get('classroom')
   async getClassroomAttendance(
+    @Req() req: any,
     @Query('classroomId') classroomId: string,
     @Query('date') dateString: string,
   ) {
@@ -42,6 +43,10 @@ export class AttendanceController {
     if (isNaN(date.getTime())) {
       date = new Date();
     }
-    return this.attendanceService.getClassroomAttendance(classroomId, date);
+    return this.attendanceService.getClassroomAttendance(
+      req.user.id,
+      classroomId,
+      date,
+    );
   }
 }

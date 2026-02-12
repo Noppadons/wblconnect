@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
   Req,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SchoolService } from './school.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,7 +20,7 @@ import { Role } from '@prisma/client';
 
 @Controller('school')
 export class SchoolController {
-  constructor(private readonly schoolService: SchoolService) {}
+  constructor(private readonly schoolService: SchoolService) { }
 
   @Get('info')
   async getSchoolInfo() {
@@ -84,25 +86,47 @@ export class SchoolController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.TEACHER, Role.ADMIN)
   async createMaterial(@Req() req: any, @Body() body: any) {
-    // Find teacher profile if not ADMIN
-    let teacherId = body.teacherId;
-    if (req.user.role === Role.TEACHER) {
-      const teacher = await this.schoolService['prisma'].teacher.findUnique({
-        where: { userId: req.user.id },
-      });
-      if (teacher) teacherId = teacher.id;
+    if (req.user.role === Role.ADMIN) {
+      return this.schoolService.createLearningMaterial(body);
+    }
+
+    // TEACHER logic: Verify they teach the subject
+    const teacher = await this.schoolService['prisma'].teacher.findUnique({
+      where: { userId: req.user.id },
+      include: {
+        subjects: { where: { id: body.subjectId } },
+      },
+    });
+
+    if (!teacher) throw new ForbiddenException('ไม่พบข้อมูลโปรไฟล์ครู');
+    if (teacher.subjects.length === 0) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์เพิ่มสื่อการสอนในวิชานี้');
     }
 
     return this.schoolService.createLearningMaterial({
       ...body,
-      teacherId,
+      teacherId: teacher.id,
     });
   }
 
   @Delete('materials/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.TEACHER, Role.ADMIN)
-  async deleteMaterial(@Param('id') id: string) {
+  async deleteMaterial(@Req() req: any, @Param('id') id: string) {
+    if (req.user.role === Role.ADMIN) {
+      return this.schoolService.deleteLearningMaterial(id);
+    }
+
+    const material = await this.schoolService['prisma'].learningMaterial.findUnique({
+      where: { id },
+      include: { teacher: true },
+    });
+
+    if (!material) throw new NotFoundException('ไม่พบสื่อการสอน');
+    if (material.teacher.userId !== req.user.id) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์ลบสื่อการสอนของผู้อื่น');
+    }
+
     return this.schoolService.deleteLearningMaterial(id);
   }
 }

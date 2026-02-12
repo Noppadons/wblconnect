@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards, Req } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,16 +9,17 @@ import { Role } from '@prisma/client';
 @Controller('reports')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(private readonly reportsService: ReportsService) { }
 
   @Roles(Role.TEACHER, Role.ADMIN)
   @Get('attendance/excel')
   async exportAttendanceExcel(
+    @Req() req: any,
     @Query('classroomId') classroomId: string,
     @Res() res: Response,
   ) {
     const workbook =
-      await this.reportsService.generateAttendanceExcel(classroomId);
+      await this.reportsService.generateAttendanceExcel(req.user.id, classroomId);
 
     res.setHeader(
       'Content-Type',
@@ -35,10 +36,11 @@ export class ReportsController {
 
   @Get('student/pdf')
   async exportStudentPdf(
+    @Req() req: any,
     @Query('studentId') studentId: string,
     @Res() res: Response,
   ) {
-    const doc = await this.reportsService.generateStudentPdf(studentId);
+    const doc = await this.reportsService.generateStudentPdf(req.user.id, studentId);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
@@ -51,10 +53,11 @@ export class ReportsController {
 
   @Get('student/transcript')
   async exportTranscript(
+    @Req() req: any,
     @Query('studentId') studentId: string,
     @Res() res: Response,
   ) {
-    const doc = await this.reportsService.generateTranscript(studentId);
+    const doc = await this.reportsService.generateTranscript(req.user.id, studentId);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(

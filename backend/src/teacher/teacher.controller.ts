@@ -4,7 +4,7 @@ import {
   Post,
   Body,
   UseGuards,
-  Request,
+  Req,
   Param,
   Query,
 } from '@nestjs/common';
@@ -18,26 +18,26 @@ import { Role } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.TEACHER)
 export class TeacherController {
-  constructor(private readonly teacherService: TeacherService) {}
+  constructor(private readonly teacherService: TeacherService) { }
 
   @Get('stats')
-  async getDashboardStats(@Request() req: any) {
+  async getDashboardStats(@Req() req: any) {
     return this.teacherService.getDashboardStats(req.user.id);
   }
 
   @Get('schedule')
-  async getMySchedule(@Request() req: any) {
+  async getMySchedule(@Req() req: any) {
     return this.teacherService.getMySchedule(req.user.id);
   }
 
   @Get('my-students')
-  async getMyStudents(@Request() req: any) {
+  async getMyStudents(@Req() req: any) {
     return this.teacherService.getMyStudents(req.user.id);
   }
 
   @Post('behavior')
   async addBehaviorScore(
-    @Request() req: any,
+    @Req() req: any,
     @Body()
     body: { studentId: string; points: number; type: string; content: string },
   ) {

@@ -36,9 +36,7 @@ export class LineService {
       );
       console.log(`[LineService] Broadcast message sent: ${message}`);
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message;
-      console.error('Failed to send Line Broadcast:', errorMsg);
-      throw new Error(`Line Broadcast Error: ${errorMsg}`);
+      this.handleLineError(err, 'Broadcast');
     }
   }
 
@@ -80,9 +78,7 @@ export class LineService {
       );
       console.log(`[LineService] Messaging API: Message sent to ${to}`);
     } catch (err: any) {
-      const errorMsg = JSON.stringify(err.response?.data) || err.message;
-      console.error('Line Messaging API Error:', errorMsg);
-      throw new Error(`LINE Messaging API Error: ${errorMsg}`);
+      this.handleLineError(err, 'Messaging API');
     }
   }
 
@@ -125,5 +121,16 @@ export class LineService {
       .digest('base64');
 
     return hash === signature;
+  }
+  private handleLineError(err: any, context: string) {
+    const errorData = err.response?.data;
+    let errorMsg = errorData?.message || err.message;
+
+    if (errorMsg.includes('Authentication failed') || err.response?.status === 401) {
+      errorMsg = `LINE Authentication Failed (401). กรุณาตรวจสอบ LINE_CHANNEL_ACCESS_TOKEN ในไฟล์ .env ว่าคัดลอกมาถูกต้องครบถ้วนและยังไม่หมดอายุครับ (Error: ${errorMsg})`;
+    }
+
+    console.error(`Line ${context} Error:`, errorMsg);
+    throw new Error(`Line ${context} Error: ${errorMsg}`);
   }
 }

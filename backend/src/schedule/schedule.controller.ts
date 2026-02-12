@@ -18,11 +18,11 @@ import { CreateScheduleDto } from './dto/create-schedule.dto';
 @Controller('schedule')
 @UseGuards(JwtAuthGuard)
 export class ScheduleController {
-  constructor(private readonly scheduleService: ScheduleService) {}
+  constructor(private readonly scheduleService: ScheduleService) { }
 
   @Get('my-schedule')
   findMySchedule(@Req() req: any) {
-    return this.scheduleService.findMySchedule(req.user);
+    return this.scheduleService.findMySchedule(req.user.id);
   }
 
   @Get('all')
@@ -40,13 +40,13 @@ export class ScheduleController {
   }
 
   @Get('classroom/:id')
-  findByClassroom(@Param('id') id: string) {
-    return this.scheduleService.findByClassroom(id);
+  findByClassroom(@Req() req: any, @Param('id') id: string) {
+    return this.scheduleService.findByClassroom(req.user.id, id);
   }
 
   @Get('teacher/:id')
-  findByTeacher(@Param('id') id: string) {
-    return this.scheduleService.findByTeacher(id);
+  findByTeacher(@Req() req: any, @Param('id') id: string) {
+    return this.scheduleService.findByTeacher(req.user.id, id);
   }
 
   @Delete(':id')

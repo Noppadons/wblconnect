@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { SchoolService } from '../school/school.service';
@@ -51,35 +51,38 @@ export class AdminService {
     );
 
     // Attendance trend: last 7 days
-    const attendanceTrend: { label: string; value: number }[] = [];
     const totalStudents = await this.prisma.student.count();
+    const startDate = new Date(thaiTime);
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
 
+    const attendances = await this.prisma.attendance.findMany({
+      where: {
+        date: { gte: startDate },
+        status: 'PRESENT',
+      },
+      select: { date: true },
+    });
+
+    const attendanceTrend: { label: string; value: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const day = new Date(thaiTime);
       day.setDate(day.getDate() - i);
-      const startOfDay = new Date(day);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(day);
-      endOfDay.setHours(23, 59, 59, 999);
+      const dateKey = day.toISOString().split('T')[0];
 
-      const presentCount = await this.prisma.attendance.count({
-        where: { date: { gte: startOfDay, lt: endOfDay }, status: 'PRESENT' },
-      });
+      const presentCount = attendances.filter(
+        (a) => a.date.toISOString().split('T')[0] === dateKey,
+      ).length;
 
       const rate =
-        totalStudents > 0
-          ? Math.round((presentCount / totalStudents) * 100)
-          : 0;
+        totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
       attendanceTrend.push({
         label: day.toLocaleDateString('th-TH', { weekday: 'short' }),
         value: rate,
       });
     }
 
-    // Score distribution: count students per GPA range
-    const students = await this.prisma.student.findMany({
-      select: { gpa: true },
-    });
+    // Score distribution: efficient count per range
     const ranges = [
       { label: '0-1.0', min: 0, max: 1.0 },
       { label: '1.0-1.5', min: 1.0, max: 1.5 },
@@ -89,10 +92,15 @@ export class AdminService {
       { label: '3.0-3.5', min: 3.0, max: 3.5 },
       { label: '3.5-4.0', min: 3.5, max: 4.01 },
     ];
-    const scoreDistribution = ranges.map((r) => ({
-      label: r.label,
-      value: students.filter((s) => s.gpa >= r.min && s.gpa < r.max).length,
-    }));
+
+    const scoreDistribution = await Promise.all(
+      ranges.map(async (r) => {
+        const count = await this.prisma.student.count({
+          where: { gpa: { gte: r.min, lt: r.max } },
+        });
+        return { label: r.label, value: count };
+      }),
+    );
 
     // Recent notifications as activity
     const recentNotifications = await this.prisma.notification.findMany({
@@ -137,8 +145,12 @@ export class AdminService {
       avatarUrl,
     } = data;
     if (!password || password.length < 6) {
-      throw new Error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+      throw new BadRequestException('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
     }
+
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    if (existingUser) throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return this.prisma.user.create({
@@ -241,42 +253,45 @@ export class AdminService {
 
   // Teacher Management
   async findAllTeachers() {
-    return this.prisma.teacher.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            avatarUrl: true,
-            createdAt: true,
+    console.log('[AdminService] findAllTeachers called');
+    try {
+      const teachers = await this.prisma.teacher.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              avatarUrl: true,
+              createdAt: true,
+            },
           },
-        },
-        homeroomClass: {
-          include: {
-            grade: true,
-          },
-        },
-        subjects: {
-          include: {
-            classroom: {
-              include: {
-                grade: true,
-              },
+          homeroomClass: {
+            include: {
+              grade: true,
             },
           },
         },
-      },
-    });
+      });
+      console.log(`[AdminService] findAllTeachers success, count: ${teachers.length}`);
+      return teachers;
+    } catch (error) {
+      console.error('[AdminService] findAllTeachers Error:', error);
+      throw error;
+    }
   }
 
   async createTeacher(data: any) {
     const { email, password, firstName, lastName, avatarUrl } = data;
     if (!password || password.length < 6) {
-      throw new Error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+      throw new BadRequestException('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
     }
+
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    if (existingUser) throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return this.prisma.user.create({

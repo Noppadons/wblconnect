@@ -29,9 +29,6 @@ export class CreateAssignmentDto {
 
 export class SubmitAssignmentDto {
   @IsString()
-  studentId: string;
-
-  @IsString()
   assignmentId: string;
 
   @IsOptional()

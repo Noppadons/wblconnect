@@ -9,7 +9,7 @@ import {
   Query,
   Headers,
   RawBody,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { LineService } from './line.service';
@@ -29,12 +29,12 @@ export class CommunicationController {
   constructor(
     private readonly notificationService: NotificationService,
     private readonly lineService: LineService,
-  ) {}
+  ) { }
 
   @Get('notifications')
   @UseGuards(JwtAuthGuard)
   async getNotifications(
-    @Request() req: any,
+    @Req() req: any,
     @Query('targetId') targetId?: string,
   ) {
     const sanitizedTargetId =
@@ -48,7 +48,7 @@ export class CommunicationController {
   @Get('notifications/unread-count')
   @UseGuards(JwtAuthGuard)
   async getUnreadCount(
-    @Request() req: any,
+    @Req() req: any,
     @Query('targetId') targetId?: string,
   ) {
     const sanitizedTargetId =
@@ -62,7 +62,7 @@ export class CommunicationController {
 
   @Post('notifications/:id/read')
   @UseGuards(JwtAuthGuard)
-  async markAsRead(@Request() req: any, @Param('id') id: string) {
+  async markAsRead(@Req() req: any, @Param('id') id: string) {
     console.log('[CommunicationController] markAsRead hit:', {
       id,
       userId: req.user.id,

@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getStudentProfileByUserId(userId: string) {
     return this.prisma.student.findUnique({
@@ -39,16 +39,17 @@ export class StudentsService {
     });
   }
 
-  async getStudentProfile(studentId: string) {
-    return this.prisma.student.findUnique({
+  async getStudentProfile(userId: string, studentId: string) {
+    const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
         user: true,
         classroom: {
           include: {
             grade: true,
-            homeroomTeacher: {
-              include: { user: true },
+            homeroomTeacher: true,
+            subjects: {
+              where: { teacher: { userId } },
             },
           },
         },
@@ -71,9 +72,28 @@ export class StudentsService {
         },
       },
     });
+
+    if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
+
+    // SECURITY CHECK
+    const userRequesting = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (userRequesting?.role !== 'ADMIN') {
+      const isMe = student.userId === userId;
+      const isHomeroomTeacher = student.classroom.homeroomTeacher?.userId === userId;
+      const teachesAnySubjectInClass = student.classroom.subjects.length > 0;
+
+      if (!isMe && !isHomeroomTeacher && !teachesAnySubjectInClass) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าดูโปรไฟล์ของนักเรียนคนนี้');
+      }
+    }
+
+    return student;
   }
 
-  async getAttendanceStats(studentId: string) {
+  async getAttendanceStats(userId: string, studentId: string) {
+    // Reuse profile logic for permission check (can be optimized but safe)
+    await this.getStudentProfile(userId, studentId);
+
     const attendance = await this.prisma.attendance.findMany({
       where: { studentId },
     });

@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,22 +9,27 @@ import { Role } from '@prisma/client';
 
 @Injectable()
 export class ScheduleService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async findMySchedule(user: any) {
-    if (user.role === Role.STUDENT) {
-      const student = await this.prisma.student.findUnique({
-        where: { userId: user.id },
-      });
-      if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
-      return this.findByClassroom(student.classroomId);
-    } else if (user.role === Role.TEACHER) {
-      const teacher = await this.prisma.teacher.findUnique({
-        where: { userId: user.id },
-      });
-      if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-      return this.findByTeacher(teacher.id);
+  async findMySchedule(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        student: { include: { classroom: true } },
+        teacher: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.role === 'STUDENT' && user.student) {
+      return this.findByClassroom(userId, user.student.classroomId);
     }
+
+    if (user.role === 'TEACHER' && user.teacher) {
+      return this.findByTeacher(userId, user.teacher.id);
+    }
+
     return [];
   }
 
@@ -76,9 +82,34 @@ export class ScheduleService {
     });
   }
 
-  async findByClassroom(classroomId: string) {
+  async findByClassroom(userId: string, id: string) {
+    // SECURITY CHECK
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { student: true },
+    });
+
+    if (user?.role !== 'ADMIN') {
+      const classroom = await this.prisma.classroom.findUnique({
+        where: { id },
+        include: {
+          homeroomTeacher: true,
+          subjects: { where: { teacher: { userId } } },
+        },
+      });
+      if (!classroom) throw new NotFoundException('Classroom not found');
+
+      const isMyClass = user?.student?.classroomId === id;
+      const isHomeroomTeacher = classroom.homeroomTeacher?.userId === userId;
+      const teachesInClass = classroom.subjects.length > 0;
+
+      if (!isMyClass && !isHomeroomTeacher && !teachesInClass) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงตารางสอนของห้องนี้');
+      }
+    }
+
     return this.prisma.schedule.findMany({
-      where: { classroomId },
+      where: { classroomId: id },
       include: {
         subject: true,
         teacher: {
@@ -89,9 +120,19 @@ export class ScheduleService {
     });
   }
 
-  async findByTeacher(teacherId: string) {
+  async findByTeacher(userId: string, id: string) {
+    // SECURITY CHECK
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role !== 'ADMIN') {
+      const teacher = await this.prisma.teacher.findUnique({ where: { id } });
+      if (!teacher) throw new NotFoundException('Teacher not found');
+      if (teacher.userId !== userId) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าดูตารางสอนของผู้อื่น');
+      }
+    }
+
     return this.prisma.schedule.findMany({
-      where: { teacherId },
+      where: { teacherId: id },
       include: {
         subject: true,
         classroom: {

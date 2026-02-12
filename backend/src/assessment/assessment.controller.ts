@@ -6,7 +6,7 @@ import {
   Param,
   UseGuards,
   Patch,
-  Request,
+  Req,
 } from '@nestjs/common';
 import { AssessmentService } from './assessment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -23,7 +23,7 @@ import {
 @Controller('assessment')
 @UseGuards(JwtAuthGuard)
 export class AssessmentController {
-  constructor(private readonly assessmentService: AssessmentService) {}
+  constructor(private readonly assessmentService: AssessmentService) { }
 
   @Roles(Role.TEACHER, Role.ADMIN)
   @UseGuards(RolesGuard)
@@ -35,18 +35,23 @@ export class AssessmentController {
   @Roles(Role.STUDENT)
   @UseGuards(RolesGuard)
   @Post('submit')
-  async submitAssignment(@Body() data: SubmitAssignmentDto) {
-    return this.assessmentService.submitAssignment(data);
+  async submitAssignment(@Req() req: any, @Body() data: any) {
+    return this.assessmentService.submitAssignment({
+      ...data,
+      userId: req.user.id,
+    });
   }
 
   @Roles(Role.TEACHER, Role.ADMIN)
   @UseGuards(RolesGuard)
   @Patch('grade/:id')
   async gradeSubmission(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() data: GradeSubmissionDto,
   ) {
     return this.assessmentService.gradeSubmission(
+      req.user.id,
       id,
       data.points,
       data.feedback,
@@ -77,10 +82,10 @@ export class AssessmentController {
   @Roles(Role.TEACHER, Role.ADMIN)
   @UseGuards(RolesGuard)
   @Post('bulk-grade/:id')
-  async bulkGrade(@Param('id') id: string, @Body() body: any) {
+  async bulkGrade(@Req() req: any, @Param('id') id: string, @Body() body: any) {
     // Handle both: [ {...} ] AND { grades: [ {...} ] }
     const grades = Array.isArray(body) ? body : body.grades || [];
-    return this.assessmentService.bulkUpdateGrades(id, grades);
+    return this.assessmentService.bulkUpdateGrades(req.user.id, id, grades);
   }
 
   @Roles(Role.TEACHER, Role.ADMIN)
@@ -93,7 +98,7 @@ export class AssessmentController {
   @Roles(Role.STUDENT)
   @UseGuards(RolesGuard)
   @Get('my-assignments')
-  async getMyAssignments(@Request() req: any) {
+  async getMyAssignments(@Req() req: any) {
     return this.assessmentService.getMyAssignments(req.user.id);
   }
 }

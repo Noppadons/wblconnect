@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus } from '@prisma/client';
 
@@ -10,22 +10,53 @@ export interface Recommendation {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  async getStudentAiInsights(studentId: string) {
+  async getStudentAiInsights(userId: string, studentId: string) {
+    const userRequesting = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
+        user: true,
+        classroom: {
+          include: {
+            homeroomTeacher: true,
+            subjects: {
+              where: { teacher: { userId } },
+            },
+          },
+        },
         submissions: {
           include: { assignment: true },
+          orderBy: { createdAt: 'desc' },
+          take: 50, // SCALABILITY: Limit to recent 50 records
         },
-        attendance: true,
-        behaviorLogs: true,
-        user: true,
+        attendance: {
+          orderBy: { date: 'desc' },
+          take: 50, // SCALABILITY: Limit to recent 50 records
+        },
+        behaviorLogs: {
+          orderBy: { createdAt: 'desc' },
+          take: 50, // SCALABILITY: Limit to recent 50 records
+        },
       },
     });
 
-    if (!student) throw new Error('Student not found');
+    if (!student) throw new NotFoundException('Student not found');
+
+    // SECURITY CHECK
+    if (userRequesting?.role !== 'ADMIN') {
+      const isMe = student.userId === userId;
+      const isHomeroomTeacher = student.classroom.homeroomTeacher?.userId === userId;
+      const teachesAnySubjectInClass = student.classroom.subjects.length > 0;
+
+      if (!isMe && !isHomeroomTeacher && !teachesAnySubjectInClass) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์ดูข้อมูลวิเคราะห์ของนักเรียนคนนี้');
+      }
+    }
 
     const gpaPrediction = this.calculateGpaPrediction(student.submissions);
     const behaviorScore = this.calculateBehaviorScore(
@@ -38,15 +69,58 @@ export class AnalyticsService {
     );
 
     return {
-      studentName: `${student.user.firstName} ${student.user.lastName}`,
       gpaPrediction,
       behaviorScore,
-      recommendations,
-      stats: {
-        totalSubmissions: student.submissions.length,
-        attendanceRate: this.calculateAttendanceRate(student.attendance),
-      },
+      riskLevel: this.calculateRiskLevel(gpaPrediction, behaviorScore),
+      summary: student.user.firstName + ' ' + (gpaPrediction < 2.5 ? 'ต้องการการดูแลเป็นพิเศษ' : 'ผลการเรียนอยู่ในเกณฑ์ปกติ'),
     };
+  }
+
+  async getEarlyWarning(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { teacher: true },
+    });
+
+    const isTeacher = user?.role === 'TEACHER';
+    const teacherId = user?.teacher?.id;
+
+    // Base filters for "Risk" students
+    const lowGpaList = await this.prisma.student.findMany({
+      where: {
+        gpa: { lt: 2.0 },
+        ...(isTeacher ? { classroom: { subjects: { some: { teacherId } } } } : {}),
+      },
+      include: { user: true, classroom: { include: { grade: true } } },
+    });
+
+    const highAbsenceGroups = await this.prisma.attendance.groupBy({
+      by: ['studentId'],
+      where: {
+        status: 'ABSENT',
+        ...(isTeacher ? { student: { classroom: { subjects: { some: { teacherId } } } } } : {}),
+      },
+      _count: { id: true },
+      having: { id: { _count: { gte: 3 } } },
+    });
+
+    const absenceStudentIds = highAbsenceGroups.map((g) => g.studentId);
+    const absentStudents = await this.prisma.student.findMany({
+      where: { id: { in: absenceStudentIds } },
+      include: { user: true, classroom: { include: { grade: true } } },
+    });
+
+    return {
+      lowGpa: lowGpaList,
+      highAbsence: absentStudents,
+      summary: `พบนักเรียนที่มีความเสี่ยงด้านผลการเรียน ${lowGpaList.length} คน และด้านสถิติมาเรียน ${absentStudents.length} คน`,
+    };
+  }
+
+  private calculateRiskLevel(gpa: number, behavior: number): string {
+    if (gpa < 2.0 || behavior < 60) return 'HIGH';
+    if (gpa < 2.5 || behavior < 80) return 'MEDIUM';
+    return 'LOW';
   }
 
   private calculateGpaPrediction(submissions: any[]) {

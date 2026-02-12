@@ -8,6 +8,7 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,20 +29,22 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get('stats')
-  async getDashboardStats() {
+  async getDashboardStats(@Req() req: any) {
+    console.log('[AdminController] getDashboardStats');
     return this.adminService.getDashboardStats();
   }
 
   @Get('charts')
-  async getDashboardCharts() {
+  async getDashboardCharts(@Req() req: any) {
+    console.log('[AdminController] getDashboardCharts');
     return this.adminService.getDashboardCharts();
   }
 
   @Get('students')
-  async findAllStudents() {
+  async findAllStudents(@Req() req: any) {
     return this.adminService.findAllStudents();
   }
 
@@ -62,38 +65,48 @@ export class AdminController {
 
   // Teacher Management
   @Get('teachers')
-  async findAllTeachers() {
-    return this.adminService.findAllTeachers();
+  async findAllTeachers(@Req() req: any) {
+    try {
+      return await this.adminService.findAllTeachers();
+    } catch (error) {
+      console.error('[AdminController] Error in findAllTeachers:', error);
+      throw error;
+    }
   }
 
   @Post('teachers')
-  async createTeacher(@Body() data: CreateTeacherDto) {
+  async createTeacher(@Req() req: any, @Body() data: CreateTeacherDto) {
     return this.adminService.createTeacher(data);
   }
 
   @Patch('teachers/:id')
-  async updateTeacher(@Param('id') id: string, @Body() data: UpdateTeacherDto) {
+  async updateTeacher(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() data: UpdateTeacherDto,
+  ) {
     return this.adminService.updateTeacher(id, data);
   }
 
   @Delete('teachers/:id')
-  async deleteTeacher(@Param('id') id: string) {
+  async deleteTeacher(@Req() req: any, @Param('id') id: string) {
     return this.adminService.deleteTeacher(id);
   }
 
   // Classroom Management
   @Get('classrooms')
-  async findAllClassrooms() {
+  async findAllClassrooms(@Req() req: any) {
     return this.adminService.findAllClassrooms();
   }
 
   @Post('classrooms')
-  async createClassroom(@Body() data: CreateClassroomDto) {
+  async createClassroom(@Req() req: any, @Body() data: CreateClassroomDto) {
     return this.adminService.createClassroom(data);
   }
 
   @Patch('classrooms/:id')
   async updateClassroom(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() data: UpdateClassroomDto,
   ) {
@@ -101,18 +114,18 @@ export class AdminController {
   }
 
   @Delete('classrooms/:id')
-  async deleteClassroom(@Param('id') id: string) {
+  async deleteClassroom(@Req() req: any, @Param('id') id: string) {
     return this.adminService.deleteClassroom(id);
   }
 
   // System Settings
   @Get('settings')
-  async getSettings() {
+  async getSettings(@Req() req: any) {
     return this.adminService.getSettings();
   }
 
   @Patch('settings')
-  async updateSettings(@Body() data: UpdateSettingsDto) {
+  async updateSettings(@Req() req: any, @Body() data: UpdateSettingsDto) {
     return this.adminService.updateSettings(data);
   }
 

@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AssessmentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async createAssignment(data: any) {
     return this.prisma.assignment.create({
@@ -20,15 +20,39 @@ export class AssessmentService {
   }
 
   async submitAssignment(data: {
-    studentId: string;
+    userId: string;
     assignmentId: string;
     content?: string;
     attachments?: string[];
   }) {
+    // 1. Resolve Student ID from User ID
+    const student = await this.prisma.student.findUnique({
+      where: { userId: data.userId },
+      select: { id: true, classroomId: true },
+    });
+
+    if (!student) {
+      throw new ForbiddenException('ไม่พบข้อมูลโปรไฟล์นักเรียน');
+    }
+
+    // 2. SECURITY CHECK: Ensure assignment exists and student is in the correct classroom
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: data.assignmentId },
+      select: { classroomId: true },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('ไม่พบการมอบหมายงานนี้');
+    }
+
+    if (student.classroomId !== assignment.classroomId) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์ส่งงานในการมอบหมายงานนี้');
+    }
+
     return this.prisma.submission.upsert({
       where: {
         studentId_assignmentId: {
-          studentId: data.studentId,
+          studentId: student.id,
           assignmentId: data.assignmentId,
         },
       },
@@ -39,7 +63,7 @@ export class AssessmentService {
         updatedAt: new Date(),
       },
       create: {
-        studentId: data.studentId,
+        studentId: student.id,
         assignmentId: data.assignmentId,
         status: 'SUBMITTED',
         content: data.content,
@@ -49,10 +73,44 @@ export class AssessmentService {
   }
 
   async gradeSubmission(
+    userId: string,
     submissionId: string,
     points: number,
     feedback?: string,
   ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: {
+        assignment: {
+          include: {
+            subject: {
+              include: { teacher: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('ไม่พบข้อมูลการส่งงาน');
+    }
+
+    // SECURITY CHECK: Ensure the teacher is the one teaching this subject
+    // (Allow ADMIN to bypass)
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (
+      user?.role !== 'ADMIN' &&
+      submission.assignment.subject.teacher.userId !== userId
+    ) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์พิจารณาเกรดให้วิชานี้');
+    }
+
+    if (points > submission.assignment.maxPoints) {
+      throw new BadRequestException(
+        `คะแนนต้องไม่เกิน ${submission.assignment.maxPoints}`,
+      );
+    }
+
     return this.prisma.submission.update({
       where: { id: submissionId },
       data: {
@@ -115,33 +173,57 @@ export class AssessmentService {
   }
 
   async bulkUpdateGrades(
+    userId: string,
     assignmentId: string,
     grades: { studentId: string; points: number; feedback?: string }[],
   ) {
-    const updates = grades.map((g) =>
-      this.prisma.submission.upsert({
-        where: {
-          studentId_assignmentId: {
+    const assignment = await this.prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        subject: {
+          include: { teacher: true },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('ไม่พบการมอบหมายงาน');
+    }
+
+    // SECURITY CHECK: Teacher or Admin only
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (
+      user?.role !== 'ADMIN' &&
+      assignment.subject.teacher.userId !== userId
+    ) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์พิจารณาเกรดให้วิชานี้');
+    }
+
+    // Use $transaction to ensure all updates succeed or none do
+    return this.prisma.$transaction(
+      grades.map((g) =>
+        this.prisma.submission.upsert({
+          where: {
+            studentId_assignmentId: {
+              studentId: g.studentId,
+              assignmentId,
+            },
+          },
+          update: {
+            points: g.points,
+            feedback: g.feedback,
+            status: 'GRADED',
+          },
+          create: {
             studentId: g.studentId,
             assignmentId,
+            points: g.points,
+            feedback: g.feedback,
+            status: 'GRADED',
           },
-        },
-        update: {
-          points: g.points,
-          feedback: g.feedback,
-          status: 'GRADED',
-        },
-        create: {
-          studentId: g.studentId,
-          assignmentId,
-          points: g.points,
-          feedback: g.feedback,
-          status: 'GRADED',
-        },
-      }),
+        }),
+      ),
     );
-
-    return Promise.all(updates);
   }
 
   async enrollStudent(studentId: string, subjectId: string) {

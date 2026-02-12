@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
@@ -10,10 +10,24 @@ export class ReportsService {
   constructor(
     private prisma: PrismaService,
     private assessmentService: AssessmentService,
-  ) {}
+  ) { }
 
-  async generateAttendanceExcel(classroomId: string) {
-    // ... (unchanged)
+  async generateAttendanceExcel(userId: string, classroomId: string) {
+    // SECURITY CHECK
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role !== 'ADMIN') {
+      const classroom = await this.prisma.classroom.findUnique({
+        where: { id: classroomId },
+        include: {
+          homeroomTeacher: true,
+          subjects: { where: { teacher: { userId } } },
+        },
+      });
+      if (!classroom) throw new NotFoundException('ไม่พบห้องเรียน');
+      if (classroom.homeroomTeacher?.userId !== userId && classroom.subjects.length === 0) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงรายงานของห้องเรียนนี้');
+      }
+    }
     const students = await this.prisma.student.findMany({
       where: { classroomId },
       include: {
@@ -53,15 +67,34 @@ export class ReportsService {
     return workbook;
   }
 
-  async generateStudentPdf(studentId: string) {
+  async generateStudentPdf(userId: string, studentId: string) {
+    // Reuse permission logic from student profile check
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
         user: true,
-        classroom: { include: { grade: true } },
+        classroom: {
+          include: {
+            grade: true,
+            homeroomTeacher: true,
+            subjects: { where: { teacher: { userId } } },
+          },
+        },
       },
     });
 
+    if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
+
+    const userRequesting = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (userRequesting?.role !== 'ADMIN') {
+      const isMe = student.userId === userId;
+      const isHomeroomTeacher = student.classroom.homeroomTeacher?.userId === userId;
+      const teachesAnySubjectInClass = student.classroom.subjects.length > 0;
+
+      if (!isMe && !isHomeroomTeacher && !teachesAnySubjectInClass) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงรายงานนิสัยการเรียนของนักเรียนคนนี้');
+      }
+    }
     const doc = new PDFDocument();
     doc
       .font('Helvetica-Bold')
@@ -74,13 +107,15 @@ export class ReportsService {
       .text(`Name: ${student?.user.firstName} ${student?.user.lastName}`);
     doc.text(`Student ID: ${student?.studentCode}`);
     doc.text(
-      `Grade: ${student?.classroom.grade.level}/${student?.classroom.roomNumber}`,
+      `Grade: ${student.classroom.grade?.level || 'N/A'}/${student.classroom.roomNumber}`,
     );
     doc.end();
     return doc;
   }
 
-  async generateTranscript(studentId: string) {
+  async generateTranscript(userId: string, studentId: string) {
+    // Same check as PDF
+    await this.generateStudentPdf(userId, studentId);
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {

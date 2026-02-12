@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
   Get,
   UseGuards,
-  Request,
+  Req,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -15,7 +15,7 @@ import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('login')
   async login(
@@ -60,7 +60,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  async getProfile(@Request() req: any) {
+  async getProfile(@Req() req: any) {
     return this.authService['usersService'].findById(req.user.id);
   }
 }
