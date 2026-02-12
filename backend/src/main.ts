@@ -16,6 +16,8 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  app.setGlobalPrefix('api');
+
   // STARTUP VALIDATION: Ensure critical env vars are set
   const requiredEnv = ['JWT_SECRET', 'DATABASE_URL'];
   const missingEnv = requiredEnv.filter(env => !process.env[env]);
@@ -34,9 +36,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new NoCacheInterceptor());
 
   app.enableCors({
-  origin: true,
-  credentials: true,
-});
+    origin: true,
+    credentials: true,
+  });
 
 
   // Serve static files from uploads folder
