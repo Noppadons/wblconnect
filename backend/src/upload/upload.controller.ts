@@ -11,6 +11,7 @@ import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UploadService } from './upload.service';
+import { UPLOAD } from '../common/constants';
 
 const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_DOC_EXTENSIONS = [
@@ -39,16 +40,23 @@ export class UploadController {
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();
-        if (ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
-          callback(null, true);
-        } else {
-          callback(
+        if (!ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
+          return callback(
             new BadRequestException(
               'รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, GIF, WebP)',
             ),
             false,
           );
         }
+        if (!UPLOAD.ALLOWED_IMAGE_TYPES.includes(file.mimetype as any)) {
+          return callback(
+            new BadRequestException(
+              `ประเภทไฟล์ ${file.mimetype} ไม่ได้รับอนุญาต`,
+            ),
+            false,
+          );
+        }
+        callback(null, true);
       },
     }),
   )
@@ -72,14 +80,21 @@ export class UploadController {
       limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
       fileFilter: (req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();
-        if (ALLOWED_DOC_EXTENSIONS.includes(ext)) {
-          callback(null, true);
-        } else {
-          callback(
+        if (!ALLOWED_DOC_EXTENSIONS.includes(ext)) {
+          return callback(
             new BadRequestException('ขออภัย ประเภทไฟล์ไม่ได้รับอนุญาต'),
             false,
           );
         }
+        if (!UPLOAD.ALLOWED_DOCUMENT_TYPES.includes(file.mimetype as any)) {
+          return callback(
+            new BadRequestException(
+              `ประเภทไฟล์ ${file.mimetype} ไม่ได้รับอนุญาต`,
+            ),
+            false,
+          );
+        }
+        callback(null, true);
       },
     }),
   )

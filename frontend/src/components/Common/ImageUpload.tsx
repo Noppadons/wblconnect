@@ -86,34 +86,35 @@ export default function ImageUpload({
 
             <div
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative group cursor-pointer border-2 border-dashed rounded-xl transition-colors overflow-hidden flex flex-col items-center justify-center text-center p-6 ${aspectClass} ${preview ? 'border-primary/30 bg-primary-light/30' : 'border-border hover:border-primary/40 hover:bg-slate-50'} ${isUploading ? 'pointer-events-none opacity-70' : ''}`}
+                className={`relative group cursor-pointer border-2 border-dashed rounded-2xl transition-all duration-200 overflow-hidden flex flex-col items-center justify-center text-center p-8 ${aspectClass} ${preview ? 'border-primary/25 bg-primary-light/20' : 'border-border/60 hover:border-primary/30 hover:bg-secondary/50'} ${isUploading ? 'pointer-events-none opacity-70' : ''}`}
             >
                 <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} accept="image/*" />
 
                 {preview ? (
                     <div className="absolute inset-0 w-full h-full">
                         <img src={normalizeUrl(preview)} alt="Preview" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <p className="text-white text-sm font-medium">เปลี่ยนรูปภาพ</p>
+                        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center">
+                            <p className="text-white text-sm font-semibold">เปลี่ยนรูปภาพ</p>
                         </div>
                         <button onClick={removeImage}
-                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white text-text-secondary flex items-center justify-center hover:bg-danger-light hover:text-danger transition-colors shadow-sm z-10">
-                            <X size={16} />
+                            className="absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-danger-light hover:text-danger transition-all duration-200 z-10"
+                            style={{ background: 'rgba(17,24,39,0.8)', color: '#94a3b8' }}>
+                            <X size={15} />
                         </button>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 text-text-muted flex items-center justify-center">
-                            <Upload size={20} />
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-secondary text-text-muted flex items-center justify-center">
+                            <Upload size={20} strokeWidth={1.7} />
                         </div>
-                        <p className="text-sm font-medium text-text-primary">เลือกรูปภาพ</p>
-                        <p className="text-xs text-text-muted">{description}</p>
+                        <p className="text-[14px] font-semibold text-text-primary">เลือกรูปภาพ</p>
+                        <p className="text-[12px] text-text-muted">{description}</p>
                     </div>
                 )}
 
                 {isUploading && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
-                        <Loader2 className="text-primary animate-spin" size={24} />
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-20">
+                        <Loader2 className="text-primary animate-spin" size={22} />
                     </div>
                 )}
             </div>

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminSubjectsPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -16,12 +17,10 @@ export default function AdminSubjectsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<any>(null);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [formData, setFormData] = useState({ code: '', name: '', credit: '1.5', teacherId: '', classroomId: '' });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchData();
     }, []);
 
@@ -30,7 +29,8 @@ export default function AdminSubjectsPage() {
             const [subRes, teachRes, classRes] = await Promise.all([
                 api.get('/school/subjects'), api.get('/admin/teachers'), api.get('/admin/classrooms')
             ]);
-            setSubjects(subRes.data); setTeachers(teachRes.data); setClassrooms(classRes.data);
+            const teachers = Array.isArray(teachRes.data) ? teachRes.data : teachRes.data.data ?? [];
+            setSubjects(subRes.data); setTeachers(teachers); setClassrooms(classRes.data);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     };
@@ -98,7 +98,7 @@ export default function AdminSubjectsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">รหัส</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">ชื่อวิชา</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden md:table-cell">หน่วยกิต</th>
@@ -109,7 +109,7 @@ export default function AdminSubjectsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-border-light">
                                     {filteredSubjects.map((s) => (
-                                        <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={s.id} className="hover:bg-surface-elevated/50 transition-colors">
                                             <td className="px-4 py-3"><span className="badge-primary text-xs">{s.code}</span></td>
                                             <td className="px-4 py-3 text-sm font-semibold text-text-primary">{s.name}</td>
                                             <td className="px-4 py-3 text-sm text-text-secondary hidden md:table-cell">{s.credit}</td>

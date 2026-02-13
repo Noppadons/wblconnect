@@ -20,7 +20,7 @@ services:
       - "3001:3001"
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-school_sms}?schema=public
-      JWT_SECRET: ${JWT_SECRET:-secretKey}
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET is required}"
       PORT: 3001
     depends_on:
       - postgres

@@ -7,12 +7,13 @@ import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { toast } from 'sonner';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 const STATUS_CONFIG = {
-    PRESENT: { icon: CheckCircle2, label: 'มาเรียน', active: 'bg-green-600 text-white', hover: 'hover:bg-green-50', color: 'text-green-600' },
-    LATE: { icon: Clock, label: 'มาสาย', active: 'bg-amber-600 text-white', hover: 'hover:bg-amber-50', color: 'text-amber-600' },
-    ABSENT: { icon: XCircle, label: 'ขาดเรียน', active: 'bg-red-600 text-white', hover: 'hover:bg-red-50', color: 'text-red-600' },
-    LEAVE: { icon: UserCheck, label: 'ลาพัก', active: 'bg-blue-600 text-white', hover: 'hover:bg-blue-50', color: 'text-blue-600' },
+    PRESENT: { icon: CheckCircle2, label: 'มาเรียน', active: 'bg-green-600 text-white', hover: 'hover:bg-green-500/10', color: 'text-green-600' },
+    LATE: { icon: Clock, label: 'มาสาย', active: 'bg-amber-600 text-white', hover: 'hover:bg-amber-500/10', color: 'text-amber-600' },
+    ABSENT: { icon: XCircle, label: 'ขาดเรียน', active: 'bg-red-600 text-white', hover: 'hover:bg-red-500/10', color: 'text-red-600' },
+    LEAVE: { icon: UserCheck, label: 'ลาพัก', active: 'bg-blue-600 text-white', hover: 'hover:bg-blue-500/10', color: 'text-blue-600' },
 };
 
 const periods = [
@@ -41,7 +42,7 @@ export default function AttendanceCheckPage() {
     const [saving, setSaving] = useState(false);
     const [selectedPeriod, setSelectedPeriod] = useState<number>(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [searchQuery, setSearchQuery] = useState("");
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
@@ -86,10 +87,6 @@ export default function AttendanceCheckPage() {
     }, [getStudentsSnapshot]);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-        if (parsedUser) setUser(parsedUser);
-
         const fetchClassrooms = async () => {
             try {
                 setLoading(true);
@@ -112,7 +109,7 @@ export default function AttendanceCheckPage() {
                     // ดึงทุกห้องเรียนทั้งหมด (ไม่ filter semester)
                     const res = await api.get('/school/all-classrooms');
                     rooms = res.data || [];
-                } else if (parsedUser?.role === 'TEACHER') {
+                } else if (user?.role === 'TEACHER') {
                     const res = await api.get('/school/my-classrooms');
                     rooms = res.data || [];
                 } else if (currentSemesterId) {
@@ -243,7 +240,7 @@ export default function AttendanceCheckPage() {
             headerActions={
                 <div className="flex gap-2">
                     {hasUnsavedChanges && (
-                        <span className="hidden sm:flex items-center gap-1 text-xs text-amber-600 font-medium bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                        <span className="hidden sm:flex items-center gap-1 text-xs text-amber-600 font-medium bg-amber-500/10 px-2.5 py-1.5 rounded-lg border border-amber-500/20">
                             <AlertTriangle size={13} /> ยังไม่บันทึก
                         </span>
                     )}
@@ -288,7 +285,7 @@ export default function AttendanceCheckPage() {
                             </div>
                             <button
                                 onClick={() => setShowAllClassrooms(!showAllClassrooms)}
-                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-white text-text-secondary border-border hover:bg-slate-50'}`}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-surface text-text-secondary border-border hover:bg-surface-elevated'}`}
                             >
                                 {showAllClassrooms ? 'แสดงห้องฉัน' : 'ดูทุกห้อง'}
                             </button>
@@ -327,16 +324,16 @@ export default function AttendanceCheckPage() {
                             <input type="text" placeholder="ค้นหาชื่อหรือรหัส..." className="input-field pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
-                            <button onClick={() => markAll('PRESENT')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition-colors">
+                            <button onClick={() => markAll('PRESENT')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/15 border border-green-500/20 transition-colors">
                                 <Check size={14} className="inline mr-1" />มาทั้งหมด
                             </button>
-                            <button onClick={() => markAll('ABSENT')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors">
+                            <button onClick={() => markAll('ABSENT')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/15 border border-red-500/20 transition-colors">
                                 <XCircle size={14} className="inline mr-1" />ขาดทั้งหมด
                             </button>
-                            <button onClick={() => markAll('LATE')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors">
+                            <button onClick={() => markAll('LATE')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 border border-amber-500/20 transition-colors">
                                 <Clock size={14} className="inline mr-1" />สายทั้งหมด
                             </button>
-                            <button onClick={() => markAll('LEAVE')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors">
+                            <button onClick={() => markAll('LEAVE')} className="px-3 py-2 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 hover:bg-blue-500/15 border border-blue-500/20 transition-colors">
                                 <UserCheck size={14} className="inline mr-1" />ลาทั้งหมด
                             </button>
                         </div>
@@ -344,7 +341,7 @@ export default function AttendanceCheckPage() {
 
                     {/* Not-today banner */}
                     {!isToday(selectedDate) && (
-                        <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2 text-sm text-amber-800">
+                        <div className="mb-4 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-sm text-amber-400">
                             <CalendarDays size={16} />
                             <span>กำลังดู/แก้ไขข้อมูลวันที่ <strong>{toThaiDateString(selectedDate)}</strong> (ไม่ใช่วันนี้)</span>
                         </div>
@@ -355,7 +352,7 @@ export default function AttendanceCheckPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">ชื่อ-นามสกุล</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary text-center">สถานะ</th>
@@ -365,21 +362,21 @@ export default function AttendanceCheckPage() {
                                 <tbody className="divide-y divide-border-light">
                                     {filteredStudents.map((student, index) => (
                                         <React.Fragment key={student.id}>
-                                            <tr className="hover:bg-slate-50/50 transition-colors">
+                                            <tr className="hover:bg-surface-elevated/50 transition-colors">
                                                 <td className="px-4 py-3 text-sm text-text-muted">{(index + 1).toString().padStart(2, '0')}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${student.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
-                                                            student.status === 'ABSENT' ? 'bg-red-100 text-red-700' :
-                                                                student.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
-                                                                    'bg-blue-100 text-blue-700'
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${student.status === 'PRESENT' ? 'bg-green-500/15 text-green-400' :
+                                                            student.status === 'ABSENT' ? 'bg-red-500/15 text-red-400' :
+                                                                student.status === 'LATE' ? 'bg-amber-500/15 text-amber-400' :
+                                                                    'bg-blue-500/15 text-blue-400'
                                                             }`}>{student.name[0]}</div>
                                                         <div>
                                                             <p className="text-sm font-semibold text-text-primary">{student.name}</p>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-xs text-text-muted">{student.studentCode}</span>
                                                                 {student.remarks && (
-                                                                    <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-xs text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded">
                                                                         {student.remarks.length > 20 ? student.remarks.slice(0, 20) + '...' : student.remarks}
                                                                     </span>
                                                                 )}
@@ -394,7 +391,7 @@ export default function AttendanceCheckPage() {
                                                             const isActive = student.status === key;
                                                             return (
                                                                 <button key={key} onClick={() => updateStatus(student.id, key)}
-                                                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isActive ? cfg.active + ' border-transparent' : 'bg-white text-text-secondary border-border ' + cfg.hover}`}>
+                                                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isActive ? cfg.active + ' border-transparent' : 'bg-surface text-text-secondary border-border ' + cfg.hover}`}>
                                                                     <cfg.icon size={14} /> <span className="hidden sm:inline">{cfg.label}</span>
                                                                 </button>
                                                             );
@@ -413,7 +410,7 @@ export default function AttendanceCheckPage() {
                                             </tr>
                                             {/* Inline Remarks Row */}
                                             {remarkStudentId === student.id && (
-                                                <tr className="bg-slate-50/80">
+                                                <tr className="bg-surface-elevated/80">
                                                     <td></td>
                                                     <td colSpan={3} className="px-4 py-2.5">
                                                         <div className="flex items-center gap-2">
@@ -451,9 +448,9 @@ export default function AttendanceCheckPage() {
             {/* Unsaved Changes Confirmation Dialog */}
             {pendingNavigation && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-modal p-6 max-w-sm w-full animate-fade-in">
+                    <div className="bg-surface rounded-2xl shadow-modal p-6 max-w-sm w-full animate-fade-in">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center">
                                 <AlertTriangle size={20} className="text-amber-600" />
                             </div>
                             <div>

@@ -2,28 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { Brain, TrendingUp, Activity, Lightbulb } from 'lucide-react';
-import api, { API_URL } from '@/lib/api';
-import { normalizeUrl } from '@/lib/url';
-
-interface Recommendation {
-    subject: string;
-    advice: string;
-    priority: 'HIGH' | 'MEDIUM' | 'LOW';
-}
-
-interface InsightData {
-    studentName: string;
-    gpaPrediction: number;
-    behaviorScore: number;
-    recommendations: Recommendation[];
-    stats: {
-        totalSubmissions: number;
-        attendanceRate: number;
-    };
-}
+import api from '@/lib/api';
+import type { AiInsightData, AiRecommendation } from '@/lib/types';
 
 export default function AiInsights({ studentId }: { studentId: string }) {
-    const [data, setData] = useState<InsightData | null>(null);
+    const [data, setData] = useState<AiInsightData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -80,9 +63,9 @@ export default function AiInsights({ studentId }: { studentId: string }) {
                         ข้อแนะนำ
                     </h3>
                     <div className="space-y-2">
-                        {data.recommendations?.map((rec, i) => (
-                            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
-                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${rec.priority === 'HIGH' ? 'bg-red-500' : rec.priority === 'MEDIUM' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                        {data.recommendations?.map((rec: AiRecommendation, i: number) => (
+                            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-surface-elevated">
+                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${rec.priority === 'HIGH' ? 'bg-red-500/100' : rec.priority === 'MEDIUM' ? 'bg-amber-500/100' : 'bg-green-500/100'}`} />
                                 <div className="min-w-0">
                                     <p className="text-xs text-text-muted">{rec.subject}</p>
                                     <p className="text-sm text-text-primary">{rec.advice}</p>

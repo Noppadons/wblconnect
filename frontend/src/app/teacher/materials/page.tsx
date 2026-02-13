@@ -8,6 +8,7 @@ import api, { API_URL } from '@/lib/api';
 import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function TeacherMaterialsPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -15,15 +16,13 @@ export default function TeacherMaterialsPage() {
     const [materials, setMaterials] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     // Form state
     const [formData, setFormData] = useState({ title: '', description: '', fileUrl: '', fileType: '' });
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchMySubjects();
     }, []);
 
@@ -127,7 +126,7 @@ export default function TeacherMaterialsPage() {
         if (['doc', 'docx'].includes(t)) return <FileText className="text-blue-500" size={24} />;
         if (['xls', 'xlsx'].includes(t)) return <FileText className="text-emerald-500" size={24} />;
         if (['ppt', 'pptx'].includes(t)) return <FileText className="text-orange-500" size={24} />;
-        return <FileText className="text-slate-500" size={24} />;
+        return <FileText className="text-text-secondary" size={24} />;
     };
 
     return (
@@ -156,14 +155,14 @@ export default function TeacherMaterialsPage() {
                     {materials.map((m: any) => (
                         <div key={m.id} className="card p-4 group">
                             <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                                <div className="w-12 h-12 rounded-xl bg-surface-elevated flex items-center justify-center shrink-0">
                                     {getFileIcon(m.fileType)}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-sm font-bold text-text-primary truncate mb-0.5">{m.title}</h3>
                                     <p className="text-xs text-text-muted line-clamp-1 mb-2">{m.description || 'ไม่มีคำอธิบาย'}</p>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{m.fileType || 'FILE'}</span>
+                                        <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">{m.fileType || 'FILE'}</span>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <a href={normalizeUrl(m.fileUrl, true)} target="_blank" rel="noreferrer" download={m.title} title="ดาวน์โหลด"
                                                 className="p-1.5 text-text-muted hover:text-primary transition-colors">
@@ -180,8 +179,8 @@ export default function TeacherMaterialsPage() {
                     ))}
 
                     {materials.length === 0 && (
-                        <div className="col-span-full py-20 text-center card bg-slate-50 border-dashed">
-                            <BookOpen size={48} className="mx-auto text-slate-300 mb-4" />
+                        <div className="col-span-full py-20 text-center card bg-surface-elevated border-dashed">
+                            <BookOpen size={48} className="mx-auto text-text-muted mb-4" />
                             <h3 className="text-base font-bold text-text-secondary">ยังไม่มีเอกสารในวิชานี้</h3>
                             <p className="text-sm text-text-muted mt-1">คลิกปุ่ม "เพิ่มเอกสาร" เพื่อเริ่มต้นอัปโหลดไฟล์</p>
                         </div>
@@ -215,11 +214,11 @@ export default function TeacherMaterialsPage() {
                                 </button>
                             </div>
                         ) : (
-                            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-primary/50'}`}>
+                            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-surface-elevated border-border' : 'bg-surface border-border hover:border-primary/50'}`}>
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Upload size={24} className="text-text-muted mb-2" />
                                     <p className="text-sm text-text-muted">คลิกเพื่ออัปโหลดไฟล์</p>
-                                    <p className="text-[10px] text-slate-400 mt-1">PDF, Document, Image (สูงสุด 20MB)</p>
+                                    <p className="text-[10px] text-text-muted mt-1">PDF, Document, Image (สูงสุด 20MB)</p>
                                 </div>
                                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                             </label>

@@ -8,6 +8,7 @@ import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import Modal from '@/components/Common/Modal';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminClassroomsPage() {
     const [classrooms, setClassrooms] = useState<any[]>([]);
@@ -15,12 +16,10 @@ export default function AdminClassroomsPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClassroom, setEditingClassroom] = useState<any>(null);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [formData, setFormData] = useState({ gradeLevel: '', roomNumber: '', homeroomTeacherId: '', semesterId: '2024-2' });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchClassrooms();
         fetchTeachers();
     }, []);
@@ -32,7 +31,7 @@ export default function AdminClassroomsPage() {
     };
 
     const fetchTeachers = async () => {
-        try { const res = await api.get('/admin/teachers'); setTeachers(res.data); }
+        try { const res = await api.get('/admin/teachers'); setTeachers(Array.isArray(res.data) ? res.data : res.data.data ?? []); }
         catch (err) { console.error(err); }
     };
 

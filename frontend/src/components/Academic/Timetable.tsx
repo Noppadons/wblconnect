@@ -2,19 +2,10 @@
 
 import React from 'react';
 import { Clock, BookOpen, User as UserIcon, X } from 'lucide-react';
-
-interface ScheduleItem {
-    id: string;
-    dayOfWeek: string;
-    periodStart: number;
-    periodEnd: number;
-    subject: { name: string; code: string };
-    teacher?: { user: { firstName: string } };
-    classroom?: { grade: { level: string }; roomNumber: string };
-}
+import type { Schedule } from '@/lib/types';
 
 interface TimetableProps {
-    schedules: ScheduleItem[];
+    schedules: Schedule[];
     type: 'STUDENT' | 'TEACHER';
     isAdmin?: boolean;
     onDelete?: (id: string) => void;
@@ -37,18 +28,18 @@ const dayMapFull: Record<string, string> = {
 };
 
 const SUBJECT_COLORS: Record<string, string> = {
-    'ท': 'bg-blue-50 border-blue-200 text-blue-700',
-    'ค': 'bg-violet-50 border-violet-200 text-violet-700',
-    'ว': 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    'ส': 'bg-amber-50 border-amber-200 text-amber-700',
-    'พ': 'bg-rose-50 border-rose-200 text-rose-700',
-    'ศ': 'bg-pink-50 border-pink-200 text-pink-700',
-    'ง': 'bg-orange-50 border-orange-200 text-orange-700',
-    'อ': 'bg-sky-50 border-sky-200 text-sky-700',
+    'ท': 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+    'ค': 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+    'ว': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+    'ส': 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+    'พ': 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+    'ศ': 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+    'ง': 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+    'อ': 'bg-sky-500/10 border-sky-500/20 text-sky-400',
 };
 
 function getSubjectColor(code: string) {
-    return SUBJECT_COLORS[code] || 'bg-slate-50 border-slate-200 text-slate-700';
+    return SUBJECT_COLORS[code] || 'bg-surface-elevated border-border text-text-primary';
 }
 
 export default function Timetable({ schedules, type, isAdmin, onDelete }: TimetableProps) {
@@ -87,7 +78,7 @@ export default function Timetable({ schedules, type, isAdmin, onDelete }: Timeta
                                     if (!sched) {
                                         return (
                                             <td key={period} className="p-1">
-                                                <div className={`h-16 rounded-lg border border-dashed flex items-center justify-center ${isBreak ? 'bg-amber-50/50 border-amber-200/50' : 'border-border-light'}`}>
+                                                <div className={`h-16 rounded-lg border border-dashed flex items-center justify-center ${isBreak ? 'bg-amber-500/10/50 border-amber-500/20/50' : 'border-border-light'}`}>
                                                     {isBreak && <span className="text-[10px] text-amber-400">พัก</span>}
                                                 </div>
                                             </td>
@@ -96,7 +87,7 @@ export default function Timetable({ schedules, type, isAdmin, onDelete }: Timeta
 
                                     if (period !== sched.periodStart) return null;
                                     const span = sched.periodEnd - sched.periodStart + 1;
-                                    const colorClass = getSubjectColor(sched.subject.code);
+                                    const colorClass = getSubjectColor(sched.subject?.code || '');
 
                                     return (
                                         <td key={period} colSpan={span} className="p-1">
@@ -108,21 +99,21 @@ export default function Timetable({ schedules, type, isAdmin, onDelete }: Timeta
                                                     </button>
                                                 )}
                                                 <div className="min-w-0">
-                                                    <p className="text-[11px] font-semibold leading-tight truncate">{sched.subject.name}</p>
+                                                    <p className="text-[11px] font-semibold leading-tight truncate">{sched.subject?.name}</p>
                                                     {type === 'TEACHER' && sched.classroom && (
-                                                        <p className="text-[10px] opacity-70 truncate">{sched.classroom.grade.level}/{sched.classroom.roomNumber}</p>
+                                                        <p className="text-[10px] opacity-70 truncate">{sched.classroom?.grade?.level}/{sched.classroom?.roomNumber}</p>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-1 min-w-0">
                                                     {type === 'STUDENT' && sched.teacher ? (
                                                         <>
                                                             <UserIcon size={10} className="opacity-50 shrink-0" />
-                                                            <span className="text-[10px] opacity-70 truncate">ครู{sched.teacher.user.firstName}</span>
+                                                            <span className="text-[10px] opacity-70 truncate">ครู{sched.teacher?.user?.firstName}</span>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <BookOpen size={10} className="opacity-50 shrink-0" />
-                                                            <span className="text-[10px] opacity-70 truncate">{sched.subject.code}</span>
+                                                            <span className="text-[10px] opacity-70 truncate">{sched.subject?.code}</span>
                                                         </>
                                                     )}
                                                 </div>

@@ -6,22 +6,21 @@ import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import AiInsights from '@/components/Analytics/AiInsights';
 import api from '@/lib/api';
+import type { Schedule, TeacherDashboardStats, WarningItem, EarlyWarningStudent } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
 import NotificationCenter from '@/components/Communication/NotificationCenter';
 import Timetable from '@/components/Academic/Timetable';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
 
 export default function TeacherDashboard() {
-    const [user, setUser] = useState<any>(null);
-    const [warnings, setWarnings] = useState<any[]>([]);
-    const [schedules, setSchedules] = useState<any[]>([]);
-    const [stats, setStats] = useState<any>({ totalStudents: 0, attendanceRate: 0, classroomId: null, className: '' });
+    const { user } = useUser();
+    const [warnings, setWarnings] = useState<WarningItem[]>([]);
+    const [schedules, setSchedules] = useState<Schedule[]>([]);
+    const [stats, setStats] = useState<TeacherDashboardStats>({ totalStudents: 0, attendanceRate: 0, classroomId: null, className: '' });
     const [loading, setLoading] = useState(true);
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchData = async () => {
             try {
                 const [warningRes, scheduleRes, statsRes] = await Promise.all([
@@ -30,7 +29,7 @@ export default function TeacherDashboard() {
                     api.get('/teacher/stats').catch(() => ({ data: { totalStudents: 0, attendanceRate: 0 } }))
                 ]);
                 if (warningRes.data?.highAbsence) {
-                    setWarnings(warningRes.data.highAbsence.map((s: any) => ({
+                    setWarnings(warningRes.data.highAbsence.map((s: EarlyWarningStudent) => ({
                         id: s.id,
                         name: s.user ? `${s.user.firstName} ${s.user.lastName}` : 'ไม่ทราบชื่อ',
                         issue: `ขาดเรียน ${s.attendance?.length || 0} ครั้ง`,
@@ -66,7 +65,7 @@ export default function TeacherDashboard() {
                     {/* Quick Actions */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                         <a href="/teacher/attendance" className="card-hover p-4 flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><ClipboardCheck size={18} /></div>
+                            <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center"><ClipboardCheck size={18} /></div>
                             <span className="text-sm font-semibold text-text-primary">เช็คชื่อ</span>
                         </a>
                         <a href="/teacher/grading" className="card-hover p-4 flex items-center gap-3">
@@ -78,7 +77,7 @@ export default function TeacherDashboard() {
                             <span className="text-sm font-semibold text-text-primary">นักเรียน</span>
                         </a>
                         <a href="/teacher/behavior" className="card-hover p-4 flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><Smile size={18} /></div>
+                            <div className="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center"><Smile size={18} /></div>
                             <span className="text-sm font-semibold text-text-primary">พฤติกรรม</span>
                         </a>
                     </div>
@@ -97,8 +96,8 @@ export default function TeacherDashboard() {
                                     <div className="space-y-2">
                                         {warnings.map((w, i) => (
                                             <div key={i} onClick={() => setSelectedStudentId(w.id)}
-                                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group">
-                                                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0"><UserX size={16} /></div>
+                                                className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors group">
+                                                <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0"><UserX size={16} /></div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-semibold text-text-primary group-hover:text-primary truncate">{w.name}</p>
                                                     <p className="text-xs text-text-muted">{w.issue}</p>
@@ -125,8 +124,8 @@ export default function TeacherDashboard() {
             {selectedStudentId && (
                 <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="absolute inset-0" onClick={() => setSelectedStudentId(null)} />
-                    <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-modal max-h-[85vh] overflow-y-auto animate-fade-in">
-                        <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between z-10">
+                    <div className="relative bg-surface w-full max-w-2xl rounded-2xl shadow-modal max-h-[85vh] overflow-y-auto animate-fade-in">
+                        <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 flex items-center justify-between z-10">
                             <h2 className="text-lg font-bold text-text-primary">AI Insights</h2>
                             <button onClick={() => setSelectedStudentId(null)} className="btn-ghost p-2"><X size={20} /></button>
                         </div>

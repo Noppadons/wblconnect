@@ -28,20 +28,21 @@ class GlobalErrorBoundary extends Component<Props, State> {
     public render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-background p-6">
-                    <div className="bg-white p-8 rounded-2xl shadow-elevated border border-border text-center max-w-sm w-full">
-                        <div className="w-16 h-16 bg-danger-light text-danger rounded-full flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle size={32} />
+                <div className="min-h-screen flex items-center justify-center p-6 bg-background gradient-mesh">
+                    <div className="card-glass p-10 text-center max-w-sm w-full">
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                             style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.15)' }}>
+                            <AlertCircle size={26} strokeWidth={1.5} className="text-danger" />
                         </div>
-                        <h1 className="text-xl font-bold text-text-primary mb-2">เกิดข้อผิดพลาด</h1>
-                        <p className="text-sm text-text-secondary mb-6">
+                        <h1 className="text-[18px] font-bold text-text-primary mb-2 tracking-tight">เกิดข้อผิดพลาด</h1>
+                        <p className="text-[14px] text-text-secondary mb-8 leading-relaxed">
                             แอปพลิเคชันพบข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง
                         </p>
                         <button
                             onClick={() => window.location.reload()}
-                            className="btn-primary w-full"
+                            className="btn-primary w-full h-12"
                         >
-                            <RefreshCcw size={16} />
+                            <RefreshCcw size={15} />
                             ลองใหม่อีกครั้ง
                         </button>
                     </div>

@@ -20,23 +20,28 @@ import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import type { Classroom, Subject, Assignment } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
+
+interface AttachmentFile {
+    name: string;
+    url: string;
+}
 
 export default function TeacherGradingOverview() {
-    const [classrooms, setClassrooms] = useState<any[]>([]);
-    const [subjects, setSubjects] = useState<any[]>([]);
+    const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedClassroom, setSelectedClassroom] = useState<string | null>(null);
-    const [assignments, setAssignments] = useState<any[]>([]);
+    const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [formData, setFormData] = useState({ title: '', description: '', maxPoints: 10, dueDate: '', classroomId: '', subjectId: '' });
-    const [attachments, setAttachments] = useState<any[]>([]);
+    const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
     const [uploading, setUploading] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchClassrooms(); fetchMySubjects();
     }, []);
 
@@ -47,14 +52,14 @@ export default function TeacherGradingOverview() {
     const fetchClassrooms = async () => {
         try {
             // ดึงห้องที่ปรึกษา/ที่สอน
-            let myRooms: any[] = [];
+            let myRooms: Classroom[] = [];
             try {
                 const myRes = await api.get('/school/my-classrooms');
                 myRooms = myRes.data || [];
             } catch { }
 
             const yearsRes = await api.get('/school/academic-years');
-            let rooms: any[] = [];
+            let rooms: Classroom[] = [];
             if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
                 const semesters = yearsRes.data[0].semesters;
                 // Smart pick: if Feb (1), pick Term 2 if available
@@ -63,7 +68,7 @@ export default function TeacherGradingOverview() {
                 let semesterId = semesters[0].id;
 
                 if (isTerm2Time) {
-                    const term2 = semesters.find((s: any) => s.term === 2);
+                    const term2 = semesters.find((s: { term: number; id: string }) => s.term === 2);
                     if (term2) semesterId = term2.id;
                 }
 
@@ -123,7 +128,7 @@ export default function TeacherGradingOverview() {
             setFormData({ title: '', description: '', maxPoints: 10, dueDate: '', classroomId: selectedClassroom || '', subjectId: formData.subjectId });
             setAttachments([]);
             if (selectedClassroom) fetchAssignments(selectedClassroom);
-        } catch (err: any) { toast.error(err.response?.data?.message || 'เกิดข้อผิดพลาด'); }
+        } catch (err: unknown) { const axiosErr = err as { response?: { data?: { message?: string } } }; toast.error(axiosErr.response?.data?.message || 'เกิดข้อผิดพลาด'); }
     };
 
     const isDueSoon = (dueDate: string) => {
@@ -147,7 +152,7 @@ export default function TeacherGradingOverview() {
                     <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
                         {classrooms.map(cls => (
                             <button key={cls.id} onClick={() => setSelectedClassroom(cls.id)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${selectedClassroom === cls.id ? 'bg-primary text-white' : 'bg-slate-100 text-text-secondary hover:bg-slate-200'}`}>
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${selectedClassroom === cls.id ? 'bg-primary text-white' : 'bg-secondary text-text-secondary hover:bg-border'}`}>
                                 ชั้น {cls.grade?.level}/{cls.roomNumber}
                             </button>
                         ))}
@@ -156,8 +161,8 @@ export default function TeacherGradingOverview() {
                     {/* Assignments List */}
                     <div className="space-y-3">
                         {assignments.map(asm => {
-                            const overdue = isOverdue(asm.dueDate);
-                            const dueSoon = isDueSoon(asm.dueDate);
+                            const overdue = asm.dueDate ? isOverdue(asm.dueDate) : false;
+                            const dueSoon = asm.dueDate ? isDueSoon(asm.dueDate) : false;
                             const submittedCount = asm._count?.submissions || 0;
                             const totalStudents = classrooms.find(c => c.id === selectedClassroom)?.students?.length || 0;
 
@@ -178,7 +183,7 @@ export default function TeacherGradingOverview() {
                                                     {asm.attachments.map((url: string, i: number) => (
                                                         <a key={i} href={normalizeUrl(url)}
                                                             target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                                                            className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
+                                                            className="flex items-center gap-1.5 px-2 py-1 bg-surface-elevated border border-border rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
                                                         >
                                                             <Upload size={10} className="rotate-180" /> ไฟล์ {i + 1}
                                                         </a>
@@ -257,15 +262,15 @@ export default function TeacherGradingOverview() {
                         <label className="label">แนบไฟล์คำสั่ง / เอกสาร (ถ้ามี)</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                             {attachments.map((file, i) => (
-                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-medium">
+                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg text-xs font-medium">
                                     <span className="truncate max-w-[150px]">{file.name}</span>
-                                    <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-700">
+                                    <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-400">
                                         <X size={14} />
                                     </button>
                                 </div>
                             ))}
                         </div>
-                        <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-primary/50'}`}>
+                        <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-surface-elevated border-border' : 'bg-surface border-border hover:border-primary/50'}`}>
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                 <Plus size={20} className="text-text-muted mb-1" />
                                 <p className="text-xs text-text-muted">คลิกเพื่ออัปโหลดไฟล์</p>

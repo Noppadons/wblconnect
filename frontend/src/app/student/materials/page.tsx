@@ -7,17 +7,22 @@ import api, { API_URL } from '@/lib/api';
 import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import { STUDENT_SIDEBAR } from '@/lib/sidebar';
+import type { Subject, LearningMaterial } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
+
+interface ProcessedMaterial extends LearningMaterial {
+    subjectName?: string;
+    subjectCode?: string;
+}
 
 export default function StudentMaterialsPage() {
-    const [subjects, setSubjects] = useState<any[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedSubject, setSelectedSubject] = useState<string>('all');
-    const [materials, setMaterials] = useState<any[]>([]);
+    const [materials, setMaterials] = useState<ProcessedMaterial[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchMyData();
     }, []);
 
@@ -33,21 +38,22 @@ export default function StudentMaterialsPage() {
 
             // Fetch subjects for filter
             const subjectsRes = await api.get('/school/subjects');
-            const mySubjects = subjectsRes.data.filter((s: any) => s.classroomId === student.classroomId);
+            const mySubjects = subjectsRes.data.filter((s: Subject) => s.classroomId === student.classroomId);
             setSubjects(mySubjects);
 
             // Fetch all materials at once
             const matRes = await api.get('/school/student-materials');
-            const processedMaterials = matRes.data.map((m: any) => ({
+            const processedMaterials = matRes.data.map((m: LearningMaterial) => ({
                 ...m,
                 subjectName: m.subject?.name,
                 subjectCode: m.subject?.code
             }));
 
             setMaterials(processedMaterials);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Fetch Materials Error:', err);
-            const msg = err.response?.data?.message || err.message || 'ไม่ทราบสาเหตุ';
+            const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+            const msg = axiosErr.response?.data?.message || axiosErr.message || 'ไม่ทราบสาเหตุ';
             toast.error(`ไม่สามารถดึงข้อมูลเอกสารการเรียนได้: ${msg}`);
         } finally {
             setLoading(false);
@@ -64,7 +70,7 @@ export default function StudentMaterialsPage() {
         if (['doc', 'docx'].includes(t)) return <FileText className="text-blue-500" size={24} />;
         if (['xls', 'xlsx'].includes(t)) return <FileText className="text-emerald-500" size={24} />;
         if (['ppt', 'pptx'].includes(t)) return <FileText className="text-orange-500" size={24} />;
-        return <FileText className="text-slate-500" size={24} />;
+        return <FileText className="text-text-secondary" size={24} />;
     };
 
     return (
@@ -86,20 +92,20 @@ export default function StudentMaterialsPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredMaterials.map((m: any) => (
+                    {filteredMaterials.map((m) => (
                         <div key={m.id} className="card p-4 hover:border-primary/30 transition-colors">
                             <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                                    {getFileIcon(m.fileType)}
+                                <div className="w-12 h-12 rounded-xl bg-surface-elevated flex items-center justify-center shrink-0">
+                                    {getFileIcon(m.fileType || '')}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-0.5">
                                         <h3 className="text-sm font-bold text-text-primary truncate">{m.title}</h3>
-                                        <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded font-bold uppercase">{m.fileType || 'FILE'}</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-secondary text-text-primary rounded font-bold uppercase">{m.fileType || 'FILE'}</span>
                                     </div>
                                     <p className="text-xs text-text-muted line-clamp-1 mb-2">{m.description || 'ไม่มีคำอธิบาย'}</p>
 
-                                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
+                                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-border-light">
                                         <span className="text-[10px] font-bold text-primary truncate max-w-[120px]">{m.subjectCode || 'ทั่วไป'}</span>
                                         <a href={normalizeUrl(m.fileUrl, true)} target="_blank" rel="noreferrer" download={m.title}
                                             className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
@@ -112,8 +118,8 @@ export default function StudentMaterialsPage() {
                     ))}
 
                     {filteredMaterials.length === 0 && (
-                        <div className="col-span-full py-20 text-center card bg-slate-50 border-dashed">
-                            <BookOpen size={48} className="mx-auto text-slate-300 mb-4" />
+                        <div className="col-span-full py-20 text-center card bg-surface-elevated border-dashed">
+                            <BookOpen size={48} className="mx-auto text-text-muted mb-4" />
                             <h3 className="text-base font-bold text-text-secondary">ยังไม่มีเอกสาร</h3>
                             <p className="text-sm text-text-muted mt-1">เมื่อครูอัปโหลดเอกสารประกอบการเรียน จะแสดงที่นี่</p>
                         </div>

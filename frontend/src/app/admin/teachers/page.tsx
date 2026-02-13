@@ -9,6 +9,7 @@ import AppShell from '@/components/Layout/AppShell';
 import ImageUpload from '@/components/Common/ImageUpload';
 import Modal from '@/components/Common/Modal';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminTeachersPage() {
     const [teachers, setTeachers] = useState<any[]>([]);
@@ -16,18 +17,16 @@ export default function AdminTeachersPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTeacher, setEditingTeacher] = useState<any>(null);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', password: '', avatarUrl: '' });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchTeachers();
     }, []);
 
     const fetchTeachers = async () => {
-        try { const res = await api.get('/admin/teachers'); setTeachers(res.data); }
+        try { const res = await api.get('/admin/teachers'); setTeachers(Array.isArray(res.data) ? res.data : res.data.data ?? []); }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
     };
@@ -108,7 +107,7 @@ export default function AdminTeachersPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">บุคลากร</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">ประจำชั้น</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden md:table-cell">อีเมล</th>
@@ -117,10 +116,10 @@ export default function AdminTeachersPage() {
                                 </thead>
                                 <tbody className="divide-y divide-border-light">
                                     {filteredTeachers.map((t) => (
-                                        <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={t.id} className="hover:bg-surface-elevated/50 transition-colors">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold overflow-hidden border border-blue-100">
+                                                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center text-sm font-semibold overflow-hidden border border-blue-100">
                                                         {t.user?.avatarUrl ? (
                                                             <img src={normalizeUrl(t.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                         ) : (

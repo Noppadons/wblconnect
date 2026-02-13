@@ -8,13 +8,14 @@ import AppShell from '@/components/Layout/AppShell';
 import ImageUpload from '@/components/Common/ImageUpload';
 import Modal from '@/components/Common/Modal';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminCommunicationPage() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [classrooms, setClassrooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [formData, setFormData] = useState({
         title: '',
         content: '',
@@ -27,8 +28,6 @@ export default function AdminCommunicationPage() {
     });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchNotifications();
         fetchClassrooms();
     }, []);
@@ -100,7 +99,7 @@ export default function AdminCommunicationPage() {
                     {notifications.map((note) => (
                         <div key={note.id} className="card p-5 hover:shadow-card transition-shadow duration-200 group">
                             <div className="flex items-start gap-4">
-                                <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${note.type === 'ALERT' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
+                                <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${note.type === 'ALERT' ? 'bg-rose-500/10 text-rose-600' : 'bg-blue-500/10 text-blue-600'
                                     }`}>
                                     {note.imageUrl ? (
                                         <img src={note.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -166,11 +165,11 @@ export default function AdminCommunicationPage() {
                         <label className="label">ประเภท</label>
                         <div className="grid grid-cols-2 gap-2">
                             <button type="button" onClick={() => setFormData({ ...formData, type: 'ANNOUNCEMENT' })}
-                                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${formData.type === 'ANNOUNCEMENT' ? 'bg-primary text-white border-primary' : 'bg-slate-50 text-text-secondary border border-border'}`}>
+                                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${formData.type === 'ANNOUNCEMENT' ? 'bg-primary text-white border-primary' : 'bg-surface-elevated text-text-secondary border border-border'}`}>
                                 ประกาศทั่วไป
                             </button>
                             <button type="button" onClick={() => setFormData({ ...formData, type: 'ALERT' })}
-                                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${formData.type === 'ALERT' ? 'bg-danger text-white border-danger' : 'bg-slate-50 text-text-secondary border border-border'}`}>
+                                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${formData.type === 'ALERT' ? 'bg-danger text-white border-danger' : 'bg-surface-elevated text-text-secondary border border-border'}`}>
                                 แจ้งเตือนด่วน
                             </button>
                         </div>
@@ -190,12 +189,12 @@ export default function AdminCommunicationPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-border">
+                    <div className="flex items-center gap-6 p-4 bg-surface-elevated rounded-xl border border-border">
                         <label className="flex items-center gap-2 cursor-pointer group">
                             <input type="checkbox" className="w-4 h-4 rounded border-border text-primary focus:ring-primary" checked={formData.isPinned} onChange={(e) => setFormData({ ...formData, isPinned: e.target.checked })} />
                             <span className="text-xs font-bold text-text-secondary group-hover:text-primary transition-colors">ปักหมุดไว้บนสุด</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer group border-l border-slate-200 pl-6">
+                        <label className="flex items-center gap-2 cursor-pointer group border-l border-border pl-6">
                             <input type="checkbox" className="w-4 h-4 rounded border-border text-green-600 focus:ring-green-500" checked={formData.sendLine} onChange={(e) => setFormData({ ...formData, sendLine: e.target.checked })} />
                             <span className="text-xs font-bold text-text-secondary group-hover:text-green-600 transition-colors">ส่งเข้า LINE (Broadcast)</span>
                         </label>

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function MyStudentsPage() {
     const [allClassrooms, setAllClassrooms] = useState<any[]>([]);
@@ -16,14 +17,11 @@ export default function MyStudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [activeTab, setActiveTab] = useState<'homeroom' | 'all'>('homeroom');
     const router = useRouter();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchData = async () => {
             try {
                 // ดึงห้องที่ครูเกี่ยวข้อง (homeroom + สอนวิชา)
@@ -35,8 +33,7 @@ export default function MyStudentsPage() {
                 const allRooms: any[] = allRes.data || [];
 
                 // หาห้องที่ปรึกษา
-                const storedUser = localStorage.getItem('user');
-                const currentUserId = storedUser ? JSON.parse(storedUser).id : null;
+                const currentUserId = user?.id || null;
                 const homeroom = myRooms.find(r =>
                     r.homeroomTeacher?.userId === currentUserId || r.homeroomTeacher?.user?.id === currentUserId || r.isHomeroom
                 ) || allRooms.find(r =>
@@ -113,15 +110,15 @@ export default function MyStudentsPage() {
             ) : (
                 <>
                     {/* Tabs: ห้องที่ปรึกษา / ทุกห้อง */}
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-lg max-w-md mb-4">
+                    <div className="flex gap-1 p-1 bg-secondary rounded-lg max-w-md mb-4">
                         {homeroomClassroom && (
                             <button onClick={() => handleTabChange('homeroom')}
-                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'homeroom' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'homeroom' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 <Heart size={14} /> ห้องที่ปรึกษา ({homeroomClassroom.students?.length || 0})
                             </button>
                         )}
                         <button onClick={() => handleTabChange('all')}
-                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'all' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'all' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                             <School size={14} /> ทุกห้องเรียน
                         </button>
                     </div>
@@ -165,7 +162,7 @@ export default function MyStudentsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">ชื่อ-นามสกุล</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden md:table-cell">รหัส</th>
@@ -178,11 +175,11 @@ export default function MyStudentsPage() {
                                         const gpa = student.gpa?.toFixed(2) || '0.00';
                                         const gpaNum = student.gpa || 0;
                                         return (
-                                            <tr key={student.id} onClick={() => router.push(`/teacher/students/${student.id}`)} className="hover:bg-slate-50/50 cursor-pointer transition-colors group">
+                                            <tr key={student.id} onClick={() => router.push(`/teacher/students/${student.id}`)} className="hover:bg-surface-elevated/50 cursor-pointer transition-colors group">
                                                 <td className="px-4 py-3 text-sm text-text-muted">{(i + 1).toString().padStart(2, '0')}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-text-secondary overflow-hidden">
+                                                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-text-secondary overflow-hidden">
                                                             {student.user?.avatarUrl ? (
                                                                 <img src={normalizeUrl(student.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                             ) : student.user?.firstName?.[0] || '?'}

@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function GradebookGridPage() {
     const { assignmentId } = useParams();
@@ -18,11 +19,9 @@ export default function GradebookGridPage() {
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchGradebook();
     }, [assignmentId]);
 
@@ -71,14 +70,14 @@ export default function GradebookGridPage() {
             }
         >
             {data?.description || data?.attachments?.length > 0 ? (
-                <div className="card p-4 mb-4 bg-slate-50 border-slate-200">
+                <div className="card p-4 mb-4 bg-surface-elevated border-border">
                     {data.description && <p className="text-sm text-text-primary mb-3">{data.description}</p>}
                     {data.attachments?.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {data.attachments.map((url: string, i: number) => (
                                 <a key={i} href={normalizeUrl(url)}
                                     target="_blank" rel="noreferrer"
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
                                     <Upload size={14} className="rotate-180" />
                                     ไฟล์คำสั่งที่ {i + 1}
                                 </a>
@@ -107,7 +106,7 @@ export default function GradebookGridPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">นักเรียน</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden sm:table-cell">สถานะ</th>
@@ -117,7 +116,7 @@ export default function GradebookGridPage() {
                                 </thead>
                                 <tbody className="divide-y divide-border-light">
                                     {filteredStudents.map((s: any, idx: number) => (
-                                        <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={s.id} className="hover:bg-surface-elevated/50 transition-colors">
                                             <td className="px-4 py-3 text-sm text-text-muted">{(idx + 1).toString().padStart(2, '0')}</td>
                                             <td className="px-4 py-3">
                                                 <p className="text-sm font-semibold text-text-primary">{s.name}</p>
@@ -151,7 +150,7 @@ export default function GradebookGridPage() {
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <input type="number" max={data?.maxPoints} placeholder="—"
-                                                        className="w-20 px-3 py-2 rounded-lg bg-slate-50 border border-border text-center text-sm font-semibold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                        className="w-20 px-3 py-2 rounded-lg bg-surface border border-border text-center text-sm font-semibold text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                         value={grades[s.id] ?? ''} onChange={(e) => handleGradeChange(s.id, e.target.value)} />
                                                     {grades[s.id] !== undefined && <CheckCircle2 size={18} className="text-green-500" />}
                                                 </div>
@@ -175,8 +174,8 @@ export default function GradebookGridPage() {
             {selectedSubmission && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                     <div className="absolute inset-0" onClick={() => setSelectedSubmission(null)} />
-                    <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-modal max-h-[90vh] overflow-y-auto animate-fade-in">
-                        <div className="sticky top-0 bg-white border-b border-border px-6 py-4 flex items-center justify-between z-10">
+                    <div className="relative bg-surface w-full max-w-lg rounded-2xl shadow-modal border border-border max-h-[90vh] overflow-y-auto animate-fade-in">
+                        <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 flex items-center justify-between z-10">
                             <div>
                                 <h2 className="text-lg font-bold text-text-primary">งานที่ส่ง</h2>
                                 <p className="text-sm text-text-muted">{selectedSubmission.studentName}</p>
@@ -184,19 +183,19 @@ export default function GradebookGridPage() {
                             <button onClick={() => setSelectedSubmission(null)} className="btn-ghost p-2"><X size={20} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-border">
+                            <div className="bg-surface-elevated p-4 rounded-xl border border-border">
                                 <p className="text-sm text-text-secondary whitespace-pre-wrap mb-4">
                                     {selectedSubmission.content || <span className="text-text-muted italic">ไม่มีเนื้อหาพิมพ์ส่งมา</span>}
                                 </p>
 
                                 {/* Student's Attachments */}
                                 {selectedSubmission.attachments?.length > 0 && (
-                                    <div className="mt-2 pt-3 border-t border-slate-200">
+                                    <div className="mt-2 pt-3 border-t border-border">
                                         <p className="text-[10px] font-bold text-text-muted uppercase mb-2">ไฟล์ที่แนบมา</p>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedSubmission.attachments.map((url: string, i: number) => (
                                                 <a key={i} href={normalizeUrl(url)} target="_blank" rel="noreferrer"
-                                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-primary hover:border-primary transition-colors">
                                                     <Upload size={14} className="rotate-180" />
                                                     ไฟล์ที่ {i + 1}
                                                 </a>

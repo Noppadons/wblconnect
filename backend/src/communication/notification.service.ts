@@ -1,9 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineService } from './line.service';
 
 @Injectable()
 export class NotificationService {
+  private readonly logger = new Logger(NotificationService.name);
+
   constructor(
     private prisma: PrismaService,
     private lineService: LineService,
@@ -30,13 +32,20 @@ export class NotificationService {
 
     if (sendLine) {
       try {
-        const lineMsg = `🔔 ${data.title}\n\n${data.content}`;
+        const lineMsg = [
+          `━━━━━━━━━━━━━━━`,
+          `� ประกาศจากโรงเรียน`,
+          `━━━━━━━━━━━━━━━`,
+          `📌 ${data.title}`,
+          ``,
+          `${data.content}`,
+          ``,
+          `━━━━━━━━━━━━━━━`,
+          `🏫 WBL Connect`,
+        ].join('\n');
         await this.lineService.broadcastMessage(lineMsg);
       } catch (err) {
-        console.error(
-          '[NotificationService] Failed to send LINE broadcast:',
-          err,
-        );
+        this.logger.warn(`Failed to send LINE broadcast: ${(err as Error).message}`);
       }
     }
 

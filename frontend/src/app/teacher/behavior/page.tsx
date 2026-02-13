@@ -7,8 +7,10 @@ import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import type { Classroom, Student, BehaviorLog, BehaviorTag, BehaviorType } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
 
-const BEHAVIOR_TAGS = [
+const BEHAVIOR_TAGS: BehaviorTag[] = [
     { label: 'จิตอาสา', points: 5, type: 'POSITIVE' },
     { label: 'ตั้งใจเรียน', points: 3, type: 'POSITIVE' },
     { label: 'รวมกลุ่มทำงาน', points: 2, type: 'POSITIVE' },
@@ -22,23 +24,20 @@ const BEHAVIOR_TAGS = [
 ];
 
 export default function BehaviorPage() {
-    const [classrooms, setClassrooms] = useState<any[]>([]);
+    const [classrooms, setClassrooms] = useState<Classroom[]>([]);
     const [selectedClassroomId, setSelectedClassroomId] = useState<string>('');
-    const [students, setStudents] = useState<any[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [user, setUser] = useState<any>(null);
-    const [logs, setLogs] = useState<any[]>([]);
+    const { user } = useUser();
+    const [logs, setLogs] = useState<BehaviorLog[]>([]);
     const [showCustomModal, setShowCustomModal] = useState(false);
-    const [customForm, setCustomForm] = useState({ content: '', points: 0, type: 'POSITIVE' as string });
+    const [customForm, setCustomForm] = useState({ content: '', points: 0, type: 'POSITIVE' as BehaviorType });
     const [activeView, setActiveView] = useState<'record' | 'history'>('record');
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchClassrooms = async () => {
             try {
                 setLoading(true);
@@ -119,7 +118,7 @@ export default function BehaviorPage() {
         setCustomForm({ content: '', points: 0, type: 'POSITIVE' });
     };
 
-    const filteredStudents = students.filter((s: any) =>
+    const filteredStudents = students.filter((s) =>
         `${s.user?.firstName} ${s.user?.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || s.studentCode?.includes(searchTerm)
     );
 
@@ -153,7 +152,7 @@ export default function BehaviorPage() {
                         <div className="flex items-center gap-2">
                             <div className="relative w-full sm:w-56">
                                 <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
-                                    {classrooms.map(c => (
+                                    {classrooms.map((c) => (
                                         <option key={c.id} value={c.id}>ชั้น {c.grade?.level}/{c.roomNumber} ({c._count?.students ?? c.students?.length ?? 0} คน)</option>
                                     ))}
                                 </select>
@@ -161,18 +160,18 @@ export default function BehaviorPage() {
                             </div>
                             <button
                                 onClick={() => setShowAllClassrooms(!showAllClassrooms)}
-                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-white text-text-secondary border-border hover:bg-slate-50'}`}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-surface text-text-secondary border-border hover:bg-surface-elevated'}`}
                             >
                                 {showAllClassrooms ? 'แสดงห้องฉัน' : 'ดูทุกห้อง'}
                             </button>
                         </div>
-                        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                        <div className="flex gap-1 p-1 bg-secondary rounded-lg">
                             <button onClick={() => setActiveView('record')}
-                                className={`py-1.5 px-4 rounded-md text-sm font-medium transition-colors ${activeView === 'record' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`py-1.5 px-4 rounded-md text-sm font-medium transition-colors ${activeView === 'record' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 บันทึก
                             </button>
                             <button onClick={() => setActiveView('history')}
-                                className={`py-1.5 px-4 rounded-md text-sm font-medium transition-colors ${activeView === 'history' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`py-1.5 px-4 rounded-md text-sm font-medium transition-colors ${activeView === 'history' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 ประวัติ ({logs.length})
                             </button>
                         </div>
@@ -183,7 +182,7 @@ export default function BehaviorPage() {
                             {/* Selection Bar */}
                             <div className="card p-3 mb-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <button onClick={selectAll} className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${selectedStudents.length === filteredStudents.length && filteredStudents.length > 0 ? 'bg-primary text-white' : 'bg-slate-100 text-text-muted hover:bg-slate-200'}`}>
+                                    <button onClick={selectAll} className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${selectedStudents.length === filteredStudents.length && filteredStudents.length > 0 ? 'bg-primary text-white' : 'bg-secondary text-text-muted hover:bg-border'}`}>
                                         {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0 ? <Check size={14} /> : ''}
                                     </button>
                                     {selectedStudents.length > 0 ? (
@@ -210,9 +209,9 @@ export default function BehaviorPage() {
                                     const score = studentScores[student.id] || 0;
                                     return (
                                         <button key={student.id} onClick={() => toggleStudent(student.id)}
-                                            className={`p-3 rounded-xl border transition-all text-center relative ${isSelected ? 'bg-primary text-white border-primary shadow-md scale-[1.02]' : 'bg-white border-border hover:border-primary/30 hover:shadow-sm'}`}>
-                                            {isSelected && <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white text-primary flex items-center justify-center"><Check size={10} strokeWidth={3} /></div>}
-                                            <div className={`w-9 h-9 rounded-lg mx-auto mb-1.5 flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-white/15' : 'bg-slate-100 text-text-secondary'}`}>
+                                            className={`p-3 rounded-xl border transition-all text-center relative ${isSelected ? 'bg-primary text-white border-primary shadow-md scale-[1.02]' : 'bg-surface border-border hover:border-primary/30 hover:shadow-sm'}`}>
+                                            {isSelected && <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-surface text-primary flex items-center justify-center"><Check size={10} strokeWidth={3} /></div>}
+                                            <div className={`w-9 h-9 rounded-lg mx-auto mb-1.5 flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-surface/20' : 'bg-secondary text-text-secondary'}`}>
                                                 {student.user?.firstName?.[0] || '?'}
                                             </div>
                                             <p className="text-[11px] font-semibold truncate">{student.user?.firstName}</p>
@@ -243,11 +242,11 @@ export default function BehaviorPage() {
                                 </div>
 
                                 {/* Positive */}
-                                <p className="text-xs font-semibold text-green-700 mb-2 flex items-center gap-1"><ThumbsUp size={12} /> พฤติกรรมดี</p>
+                                <p className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1"><ThumbsUp size={12} /> พฤติกรรมดี</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-4">
                                     {BEHAVIOR_TAGS.filter(t => t.type === 'POSITIVE').map((tag, i) => (
                                         <button key={i} onClick={() => handleSubmit(tag.label, tag.points, tag.type)} disabled={selectedStudents.length === 0}
-                                            className="flex items-center gap-2 p-2.5 rounded-xl border border-green-200 bg-green-50 text-green-700 transition-all disabled:opacity-30 disabled:grayscale hover:shadow-md active:scale-95 text-left">
+                                            className="flex items-center gap-2 p-2.5 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 transition-all disabled:opacity-30 disabled:grayscale hover:shadow-md active:scale-95 text-left">
                                             <Smile size={16} className="shrink-0" />
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-[11px] font-semibold leading-tight truncate">{tag.label}</p>
@@ -258,11 +257,11 @@ export default function BehaviorPage() {
                                 </div>
 
                                 {/* Negative */}
-                                <p className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1"><ThumbsDown size={12} /> พฤติกรรมไม่ดี</p>
+                                <p className="text-xs font-semibold text-red-400 mb-2 flex items-center gap-1"><ThumbsDown size={12} /> พฤติกรรมไม่ดี</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                                     {BEHAVIOR_TAGS.filter(t => t.type === 'NEGATIVE').map((tag, i) => (
                                         <button key={i} onClick={() => handleSubmit(tag.label, tag.points, tag.type)} disabled={selectedStudents.length === 0}
-                                            className="flex items-center gap-2 p-2.5 rounded-xl border border-red-200 bg-red-50 text-red-700 transition-all disabled:opacity-30 disabled:grayscale hover:shadow-md active:scale-95 text-left">
+                                            className="flex items-center gap-2 p-2.5 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 transition-all disabled:opacity-30 disabled:grayscale hover:shadow-md active:scale-95 text-left">
                                             <Frown size={16} className="shrink-0" />
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-[11px] font-semibold leading-tight truncate">{tag.label}</p>
@@ -279,7 +278,7 @@ export default function BehaviorPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="border-b border-border bg-slate-50/50">
+                                        <tr className="border-b border-border bg-surface-elevated/50">
                                             <th className="px-4 py-3 text-xs font-semibold text-text-secondary">นักเรียน</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-text-secondary">พฤติกรรม</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden sm:table-cell">คะแนน</th>
@@ -288,10 +287,10 @@ export default function BehaviorPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border-light">
                                         {logs.map((log: any) => (
-                                            <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={log.id} className="hover:bg-surface-elevated/50 transition-colors">
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-text-secondary">
+                                                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold text-text-secondary">
                                                             {log.student?.user?.firstName?.[0] || '?'}
                                                         </div>
                                                         <div>
@@ -301,7 +300,7 @@ export default function BehaviorPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${log.type === 'POSITIVE' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg ${log.type === 'POSITIVE' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                                                         {log.type === 'POSITIVE' ? <Smile size={12} /> : <Frown size={12} />}
                                                         {log.content}
                                                     </span>
@@ -333,13 +332,13 @@ export default function BehaviorPage() {
             {/* Custom Behavior Modal */}
             <Modal isOpen={showCustomModal} onClose={() => setShowCustomModal(false)} title="บันทึกพฤติกรรมกำหนดเอง" subtitle={`ให้ ${selectedStudents.length} คน`}>
                 <div className="p-6 space-y-4">
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                    <div className="flex gap-1 p-1 bg-secondary rounded-lg">
                         <button onClick={() => setCustomForm({ ...customForm, type: 'POSITIVE' })}
-                            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${customForm.type === 'POSITIVE' ? 'bg-green-500 text-white shadow-sm' : 'text-text-secondary'}`}>
+                            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${customForm.type === 'POSITIVE' ? 'bg-green-500/100 text-white shadow-sm' : 'text-text-secondary'}`}>
                             <ThumbsUp size={14} /> ดี
                         </button>
                         <button onClick={() => setCustomForm({ ...customForm, type: 'NEGATIVE' })}
-                            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${customForm.type === 'NEGATIVE' ? 'bg-red-500 text-white shadow-sm' : 'text-text-secondary'}`}>
+                            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${customForm.type === 'NEGATIVE' ? 'bg-red-500/100 text-white shadow-sm' : 'text-text-secondary'}`}>
                             <ThumbsDown size={14} /> ไม่ดี
                         </button>
                     </div>

@@ -6,17 +6,16 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminSettingsPage() {
     const [settings, setSettings] = useState<any>({ name: '' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [activeTab, setActiveTab] = useState('general');
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchSettings();
     }, []);
 
@@ -56,7 +55,7 @@ export default function AdminSettingsPage() {
                         {tabs.map(tab => (
                             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${
-                                    activeTab === tab.key ? 'bg-primary-light text-primary font-semibold' : 'text-text-secondary hover:bg-slate-50'
+                                    activeTab === tab.key ? 'bg-primary-light text-primary font-semibold' : 'text-text-secondary hover:bg-surface-elevated'
                                 }`}>
                                 <tab.icon size={18} />
                                 {tab.label}

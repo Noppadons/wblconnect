@@ -4,21 +4,20 @@ import React, { useEffect, useState } from 'react';
 import { Users, GraduationCap, School, Activity, ArrowRight, Calendar, Clock, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import type { AdminDashboardStats, AdminDashboardCharts, Notification } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { SimpleBarChart, SimpleLineChart } from '@/components/Dashboard/SimpleCharts';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
 
 export default function AdminDashboardPage() {
-    const [stats, setStats] = useState({ totalStudents: 0, totalTeachers: 0, totalClassrooms: 0, attendanceToday: 0 });
-    const [charts, setCharts] = useState<any>(null);
+    const [stats, setStats] = useState<AdminDashboardStats>({ totalStudents: 0, totalTeachers: 0, totalClassrooms: 0, attendanceToday: 0 });
+    const [charts, setCharts] = useState<AdminDashboardCharts | null>(null);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         Promise.all([
             api.get('/admin/stats'),
             api.get('/admin/charts').catch(() => ({ data: null })),
@@ -33,9 +32,9 @@ export default function AdminDashboardPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    const attendanceTrend = charts?.attendanceTrend?.map((d: any) => d.value) || [0, 0, 0, 0, 0, 0, 0];
-    const scoreDistribution = charts?.scoreDistribution?.map((d: any) => d.value) || [0, 0, 0, 0, 0, 0, 0];
-    const recentActivity = charts?.recentNotifications || [];
+    const attendanceTrend = charts?.attendanceTrend?.map((d) => d.value) || [0, 0, 0, 0, 0, 0, 0];
+    const scoreDistribution = charts?.scoreDistribution?.map((d) => d.value) || [0, 0, 0, 0, 0, 0, 0];
+    const recentActivity: Notification[] = charts?.recentNotifications || [];
 
     return (
         <AppShell role="ADMIN" sidebarItems={ADMIN_SIDEBAR} user={user} pageTitle="ภาพรวมระบบ" pageSubtitle="Dashboard">
@@ -108,9 +107,9 @@ export default function AdminDashboardPage() {
                         <div className="lg:col-span-2 card p-6">
                             <h3 className="text-base font-semibold text-text-primary mb-4">กิจกรรมล่าสุด</h3>
                             <div className="space-y-3">
-                                {recentActivity.length > 0 ? recentActivity.map((item: any) => (
-                                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                        <div className={`w-2 h-2 rounded-full shrink-0 ${item.type === 'ALERT' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                {recentActivity.length > 0 ? recentActivity.map((item) => (
+                                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-elevated transition-colors">
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${item.type === 'ALERT' ? 'bg-amber-500/100' : 'bg-blue-500/100'}`} />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-text-primary truncate">{item.title}</p>
                                         </div>
@@ -130,9 +129,9 @@ export default function AdminDashboardPage() {
     );
 }
 
-function QuickLink({ href, label, desc, icon: Icon }: { href: string; label: string; desc: string; icon: any }) {
+function QuickLink({ href, label, desc, icon: Icon }: { href: string; label: string; desc: string; icon: React.ComponentType<{ size: number }> }) {
     return (
-        <a href={href} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group">
+        <a href={href} className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-elevated transition-colors group">
             <div className="w-10 h-10 rounded-lg bg-primary-light text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                 <Icon size={20} />
             </div>

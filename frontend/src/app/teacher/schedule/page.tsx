@@ -6,6 +6,7 @@ import AppShell from '@/components/Layout/AppShell';
 import api from '@/lib/api';
 import Timetable from '@/components/Academic/Timetable';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 const DAY_NAMES: Record<string, string> = {
     MONDAY: 'จันทร์', TUESDAY: 'อังคาร', WEDNESDAY: 'พุธ', THURSDAY: 'พฤหัสบดี', FRIDAY: 'ศุกร์',
@@ -22,14 +23,11 @@ function getTodayDayOfWeek() {
 }
 
 export default function TeacherSchedulePage() {
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchData = async () => {
             try {
                 const res = await api.get('/schedule/my-schedule').catch(() => ({ data: [] }));
@@ -80,7 +78,7 @@ export default function TeacherSchedulePage() {
                                     const isCurrent = hour >= periodStartHour && hour < periodEndHour;
 
                                     return (
-                                        <div key={s.id} className={`p-3 rounded-xl border-2 transition-all ${isCurrent ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-white'}`}>
+                                        <div key={s.id} className={`p-3 rounded-xl border-2 transition-all ${isCurrent ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-surface'}`}>
                                             <div className="flex items-center justify-between mb-1.5">
                                                 <span className={`text-xs font-bold ${isCurrent ? 'text-primary' : 'text-text-muted'}`}>
                                                     คาบ {s.periodStart}{s.periodEnd > s.periodStart ? `-${s.periodEnd}` : ''}
@@ -106,7 +104,7 @@ export default function TeacherSchedulePage() {
                     )}
 
                     {todaySchedules.length === 0 && ['SATURDAY', 'SUNDAY'].includes(todayDay) && (
-                        <div className="mb-6 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800 flex items-center gap-2">
+                        <div className="mb-6 px-4 py-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-400 flex items-center gap-2">
                             <Calendar size={16} />
                             วันนี้เป็นวันหยุด ไม่มีคาบสอน
                         </div>

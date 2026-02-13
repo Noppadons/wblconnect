@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Mail, Lock, LogIn, GraduationCap, BookOpen, Users, Clock, Shield, Eye, EyeOff } from "lucide-react";
 import { API_URL } from "@/lib/api";
+import type { LoginResponse } from "@/lib/types";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -42,8 +43,8 @@ export default function LoginPage() {
                 throw new Error(msg);
             }
 
-            const loginRes = await response.json();
-            localStorage.setItem('user', JSON.stringify(loginRes.user));
+            const loginRes: LoginResponse = await response.json();
+            sessionStorage.setItem('user', JSON.stringify(loginRes.user));
             toast.success(`ยินดีต้อนรับ ${loginRes.user.firstName}`);
 
             if (loginRes.user.role === 'ADMIN') {
@@ -53,11 +54,12 @@ export default function LoginPage() {
             } else {
                 router.push('/teacher/dashboard');
             }
-        } catch (err: any) {
-            if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        } catch (err: unknown) {
+            const error = err as Error;
+            if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
                 toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
             } else {
-                toast.error(err.message || 'เกิดข้อผิดพลาด');
+                toast.error(error.message || 'เกิดข้อผิดพลาด');
             }
         } finally {
             setLoading(false);
@@ -67,172 +69,169 @@ export default function LoginPage() {
     const today = new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     return (
-        <div className="min-h-screen flex">
-            {/* Left: Visual Panel */}
-            <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
-                {/* Background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800" />
+        <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
+            {/* ── Background orbs ── */}
+            <div className="fixed inset-0 gradient-mesh pointer-events-none" />
+            <div className="fixed top-[-20%] left-[-10%] w-[600px] h-[600px] opacity-25 pointer-events-none"
+                 style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 65%)' }} />
+            <div className="fixed bottom-[-15%] right-[-5%] w-[500px] h-[500px] opacity-20 pointer-events-none"
+                 style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.2) 0%, transparent 65%)' }} />
+            <div className="fixed top-[30%] right-[20%] w-[300px] h-[300px] opacity-15 pointer-events-none"
+                 style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 65%)' }} />
 
-                {/* Decorative shapes */}
-                <div className="absolute inset-0">
-                    <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-white/5 rounded-full" />
-                    <div className="absolute bottom-[-20%] left-[-5%] w-[400px] h-[400px] bg-blue-400/10 rounded-full" />
-                    <div className="absolute top-[40%] right-[20%] w-[200px] h-[200px] bg-indigo-400/10 rounded-full" />
-                    {/* Grid pattern */}
-                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+            {/* ── Top bar ── */}
+            <div className="relative z-10 flex items-center justify-between px-6 lg:px-10 py-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                         style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', boxShadow: '0 0 20px rgba(59,130,246,0.3)' }}>
+                        <GraduationCap size={20} className="text-white" />
+                    </div>
+                    <div>
+                        <span className="text-[15px] font-bold text-text-primary tracking-tight block leading-tight">WBL Connect</span>
+                        <span className="text-[10px] font-medium text-text-muted">School Management System</span>
+                    </div>
                 </div>
-
-                <div className="relative z-10 flex flex-col justify-between p-12 w-full text-white">
-                    {/* Top: Logo + Time */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                                <GraduationCap size={26} />
-                            </div>
-                            <div>
-                                <p className="text-lg font-bold tracking-tight">WBL Connect</p>
-                                <p className="text-[11px] text-blue-200">School Management System</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-2xl font-bold tabular-nums">{currentTime}</p>
-                            <p className="text-[11px] text-blue-200">{today}</p>
-                        </div>
+                <div className="flex items-center gap-4">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                         style={{ background: 'rgba(34,211,238,0.08)', color: '#22d3ee', border: '1px solid rgba(34,211,238,0.15)' }}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                        ระบบพร้อมใช้งาน
                     </div>
-
-                    {/* Center: Main content */}
-                    <div className="flex-1 flex flex-col justify-center max-w-lg">
-                        <div className="mb-8">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-xs font-medium text-blue-100 mb-6">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                ระบบพร้อมใช้งาน
-                            </div>
-                            <h1 className="text-4xl xl:text-5xl font-bold leading-[1.15] tracking-tight mb-5">
-                                โรงเรียนวัดบึงเหล็ก<br />
-                                <span className="text-blue-200">ในพระบรมราชานุเคราะห์</span>
-                            </h1>
-                            <p className="text-blue-100/80 text-base leading-relaxed max-w-md">
-                                ระบบบริหารจัดการโรงเรียนอัจฉริยะ เชื่อมต่อครู นักเรียน และผู้ปกครอง เข้าด้วยกันอย่างไร้รอยต่อ
-                            </p>
-                        </div>
-
-                        {/* Feature highlights */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <FeatureItem icon={BookOpen} label="จัดการหลักสูตร" desc="ตารางเรียน ตารางสอน" />
-                            <FeatureItem icon={Users} label="ข้อมูลนักเรียน" desc="ประวัติ ผลการเรียน" />
-                            <FeatureItem icon={Clock} label="เช็คชื่อออนไลน์" desc="บันทึกแบบ Real-time" />
-                            <FeatureItem icon={Shield} label="แจ้งเตือนผู้ปกครอง" desc="ผ่าน LINE อัตโนมัติ" />
-                        </div>
-                    </div>
-
-                    {/* Bottom */}
-                    <div className="flex items-center justify-between text-xs text-blue-300/60">
-                        <p>WBL Connect v2.0</p>
-                        <p>สำนักงานเขตพื้นที่การศึกษามัธยมศึกษา</p>
+                    <div className="text-right hidden md:block">
+                        <p className="text-[20px] font-bold text-text-primary tabular-nums tracking-tight">{currentTime}</p>
+                        <p className="text-[11px] text-text-muted leading-tight">{today}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Right: Login Form */}
-            <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-slate-50 to-white p-6 relative">
-                {/* Subtle background pattern */}
-                <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+            {/* ── Main content ── */}
+            <div className="flex-1 flex items-center justify-center relative z-10 px-5 pb-8">
+                <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
 
-                <div className="w-full max-w-[400px] relative z-10">
-                    {/* Mobile Logo */}
-                    <div className="lg:hidden text-center mb-10">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
-                            <GraduationCap size={32} />
+                    {/* Left: Branding + Features */}
+                    <div className="flex-1 text-center lg:text-left max-w-lg">
+                        <h1 className="text-[36px] lg:text-[44px] xl:text-[50px] font-bold text-text-primary leading-[1.08] mb-4 tracking-tight animate-fade-in">
+                            โรงเรียนวัดบึงเหล็ก
+                        </h1>
+                        <p className="text-[18px] lg:text-[22px] font-semibold mb-6 tracking-tight animate-fade-in"
+                           style={{ color: 'transparent', backgroundImage: 'linear-gradient(135deg, #60a5fa, #c084fc, #22d3ee)', backgroundClip: 'text', WebkitBackgroundClip: 'text' }}>
+                            ในพระบรมราชานุเคราะห์
+                        </p>
+                        <p className="text-[15px] text-text-secondary leading-relaxed mb-10 max-w-md mx-auto lg:mx-0 animate-fade-in">
+                            ระบบบริหารจัดการโรงเรียนอัจฉริยะ เชื่อมต่อครู นักเรียน และผู้ปกครอง เข้าด้วยกันอย่างไร้รอยต่อ
+                        </p>
+
+                        {/* Feature grid — colorful icons */}
+                        <div className="grid grid-cols-2 gap-3 stagger-children">
+                            <FeatureItem icon={BookOpen} label="จัดการหลักสูตร" desc="ตารางเรียน ตารางสอน" color="#60a5fa" bg="rgba(59,130,246,0.1)" />
+                            <FeatureItem icon={Users} label="ข้อมูลนักเรียน" desc="ประวัติ ผลการเรียน" color="#c084fc" bg="rgba(168,85,247,0.1)" />
+                            <FeatureItem icon={Clock} label="เช็คชื่อออนไลน์" desc="บันทึก Real-time" color="#34d399" bg="rgba(52,211,153,0.1)" />
+                            <FeatureItem icon={Shield} label="แจ้งเตือนอัตโนมัติ" desc="ผ่าน LINE" color="#fb923c" bg="rgba(251,146,60,0.1)" />
                         </div>
-                        <h2 className="text-xl font-bold text-text-primary">WBL Connect</h2>
-                        <p className="text-xs text-text-muted mt-1">โรงเรียนวัดบึงเหล็ก ในพระบรมราชานุเคราะห์</p>
                     </div>
 
-                    {/* Welcome text */}
-                    <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-text-primary mb-2">เข้าสู่ระบบ</h1>
-                        <p className="text-sm text-text-muted">ยินดีต้อนรับกลับ กรุณากรอกข้อมูลเพื่อเข้าใช้งาน</p>
-                    </div>
+                    {/* Right: Login Form */}
+                    <div className="w-full max-w-[400px] shrink-0">
+                        <div className="rounded-2xl p-8 animate-fade-in-scale"
+                             style={{ background: 'rgba(17,24,39,0.7)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }}>
 
-                    {/* Login Form */}
-                    <form className="space-y-5" onSubmit={handleLogin}>
-                        <div>
-                            <label className="text-sm font-medium text-text-secondary mb-1.5 block">อีเมล</label>
-                            <div className="relative group">
-                                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors z-10" />
-                                <input
-                                    type="email"
-                                    required
-                                    placeholder="name@school.ac.th"
-                                    className="input-field !pl-12 h-12 text-[15px]"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    autoComplete="email"
-                                />
+                            <div className="text-center mb-8">
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                                     style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', boxShadow: '0 0 24px rgba(59,130,246,0.25)' }}>
+                                    <LogIn size={20} className="text-white" />
+                                </div>
+                                <h2 className="text-[22px] font-bold text-text-primary tracking-tight">เข้าสู่ระบบ</h2>
+                                <p className="text-[13px] text-text-secondary mt-1">กรุณากรอกข้อมูลเพื่อเข้าใช้งาน</p>
                             </div>
-                        </div>
 
-                        <div>
-                            <label className="text-sm font-medium text-text-secondary mb-1.5 block">รหัสผ่าน</label>
-                            <div className="relative group">
-                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors z-10" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    required
-                                    placeholder="กรอกรหัสผ่าน"
-                                    className="input-field !pl-12 !pr-12 h-12 text-[15px]"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    autoComplete="current-password"
-                                />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors">
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            <form className="space-y-4" onSubmit={handleLogin}>
+                                <div>
+                                    <label className="label">อีเมล</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center z-10"
+                                             style={{ background: 'rgba(59,130,246,0.1)' }}>
+                                            <Mail size={14} style={{ color: '#60a5fa' }} />
+                                        </div>
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="name@school.ac.th"
+                                            className="input-field h-12 text-[14px]"
+                                            style={{ paddingLeft: '3rem' }}
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            autoComplete="email"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="label">รหัสผ่าน</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center z-10"
+                                             style={{ background: 'rgba(168,85,247,0.1)' }}>
+                                            <Lock size={14} style={{ color: '#c084fc' }} />
+                                        </div>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            required
+                                            placeholder="กรอกรหัสผ่าน"
+                                            className="input-field h-12 text-[14px] !pr-12"
+                                            style={{ paddingLeft: '3rem' }}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            autoComplete="current-password"
+                                        />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-primary rounded-lg transition-colors">
+                                            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="btn-primary w-full h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                                >
+                                    {loading ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            เข้าสู่ระบบ
+                                            <LogIn size={16} />
+                                        </>
+                                    )}
                                 </button>
-                            </div>
+                            </form>
+
+                            <p className="text-center text-[12px] text-text-muted mt-6">
+                                หากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบ
+                            </p>
                         </div>
-
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input type="checkbox" className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 accent-blue-600" />
-                                <span className="text-sm text-text-secondary">จดจำการเข้าสู่ระบบ</span>
-                            </label>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98]"
-                        >
-                            {loading ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    เข้าสู่ระบบ
-                                    <LogIn size={18} />
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    <p className="text-center text-xs text-text-muted mt-8">
-                        หากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบ
-                    </p>
+                    </div>
                 </div>
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="relative z-10 text-center py-4">
+                <p className="text-[11px] text-text-muted">© {new Date().getFullYear()} WBL Connect v2.0 — โรงเรียนวัดบึงเหล็ก ในพระบรมราชานุเคราะห์</p>
             </div>
         </div>
     );
 }
 
-function FeatureItem({ icon: Icon, label, desc }: { icon: any; label: string; desc: string }) {
+function FeatureItem({ icon: Icon, label, desc, color, bg }: { icon: React.ComponentType<{ size: number; style?: React.CSSProperties }>; label: string; desc: string; color: string; bg: string }) {
     return (
-        <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                <Icon size={18} />
+        <div className="flex items-start gap-3 p-3.5 rounded-xl transition-all duration-300 animate-fade-in group"
+             style={{ background: 'rgba(148,163,184,0.03)', border: '1px solid rgba(148,163,184,0.06)' }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
+                 style={{ background: bg, boxShadow: `0 0 12px ${bg}` }}>
+                <Icon size={16} style={{ color }} />
             </div>
-            <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">{label}</p>
-                <p className="text-[11px] text-blue-200/70 mt-0.5">{desc}</p>
+            <div>
+                <p className="text-[13px] font-semibold text-text-primary leading-tight">{label}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{desc}</p>
             </div>
         </div>
     );

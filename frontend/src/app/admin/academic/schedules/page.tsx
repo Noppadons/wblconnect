@@ -8,6 +8,7 @@ import AppShell from '@/components/Layout/AppShell';
 import Timetable from '@/components/Academic/Timetable';
 import Modal from '@/components/Common/Modal';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 const DAY_LABELS = [
     { value: 'MONDAY', label: 'จันทร์' },
@@ -26,12 +27,10 @@ export default function AdminSchedulesPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [formData, setFormData] = useState({ dayOfWeek: 'MONDAY', periodStart: '1', periodEnd: '1', subjectId: '', teacherId: '', classroomId: '' });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchInitialData();
     }, []);
 
@@ -45,7 +44,8 @@ export default function AdminSchedulesPage() {
             const [classRes, teachRes, subRes] = await Promise.all([
                 api.get('/admin/classrooms'), api.get('/admin/teachers'), api.get('/school/subjects')
             ]);
-            setClassrooms(classRes.data); setTeachers(teachRes.data); setSubjects(subRes.data);
+            const teachers = Array.isArray(teachRes.data) ? teachRes.data : teachRes.data.data ?? [];
+            setClassrooms(classRes.data); setTeachers(teachers); setSubjects(subRes.data);
             if (classRes.data.length > 0) setSelectedId(classRes.data[0].id);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
@@ -104,13 +104,13 @@ export default function AdminSchedulesPage() {
                 <>
                     {/* View Toggle + Selector */}
                     <div className="flex flex-col md:flex-row gap-3 mb-6">
-                        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg max-w-xs">
+                        <div className="flex gap-1 p-1 bg-secondary rounded-lg max-w-xs">
                             <button onClick={() => { setViewType('CLASSROOM'); setSelectedId(classrooms[0]?.id || ''); }}
-                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${viewType === 'CLASSROOM' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${viewType === 'CLASSROOM' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 ตามห้องเรียน
                             </button>
                             <button onClick={() => { setViewType('TEACHER'); setSelectedId(teachers[0]?.id || ''); }}
-                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${viewType === 'TEACHER' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${viewType === 'TEACHER' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 ตามครูผู้สอน
                             </button>
                         </div>

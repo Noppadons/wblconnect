@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { extname } from 'path';
 
 @Injectable()
 export class UploadService {
+    private readonly logger = new Logger(UploadService.name);
     private supabase: SupabaseClient;
 
     constructor() {
@@ -11,7 +12,7 @@ export class UploadService {
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
-            console.warn('SUPABASE_URL or SUPABASE_KEY is not defined. File uploads will fail in production.');
+            this.logger.warn('SUPABASE_URL or SUPABASE_KEY is not defined. File uploads will fail in production.');
         }
 
         this.supabase = createClient(supabaseUrl || '', supabaseKey || '');
@@ -45,12 +46,11 @@ export class UploadService {
             });
 
         if (error) {
-            console.error('--- Supabase Upload Error Details ---');
-            console.error('Error Code:', (error as any).code);
-            console.error('Error Message:', error.message);
-            console.error('Error Status:', (error as any).status);
-            console.error('Full Error:', JSON.stringify(error, null, 2));
-            console.error('--------------------------------------');
+            this.logger.error(`Supabase upload failed: ${error.message}`, JSON.stringify({
+                code: (error as unknown as Record<string, unknown>).code,
+                status: (error as unknown as Record<string, unknown>).status,
+                fileName,
+            }));
 
             // Map specific Supabase error "Invalid Compact JWS" to a clearer message
             if (error.message.includes('Invalid Compact JWS')) {

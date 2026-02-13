@@ -56,79 +56,70 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
             title="เปลี่ยนรหัสผ่าน"
             subtitle="เพื่อความปลอดภัยกรุณาใช้รหัสผ่านที่คาดเดาได้ยาก"
         >
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 <div className="space-y-4">
-                    {/* Old Password */}
-                    <div className="space-y-1.5">
-                        <label className="text-[13px] font-medium text-text-secondary">รหัสผ่านเดิม</label>
-                        <div className="relative">
-                            <input
-                                type={showPasswords ? "text" : "password"}
-                                value={oldPassword}
-                                onChange={(e) => setOldPassword(e.target.value)}
-                                className="w-full h-11 bg-slate-50 border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-11"
-                                placeholder="ป้อนรหัสผ่านปัจจุบัน"
-                                required
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <label className="label">รหัสผ่านเดิม</label>
+                        <input
+                            type={showPasswords ? "text" : "password"}
+                            value={oldPassword}
+                            onChange={(e) => setOldPassword(e.target.value)}
+                            className="input-field"
+                            placeholder="ป้อนรหัสผ่านปัจจุบัน"
+                            required
+                        />
                     </div>
 
-                    <div className="h-px bg-slate-100 my-2" />
+                    <div className="border-t border-border/30" />
 
-                    {/* New Password */}
-                    <div className="space-y-1.5">
-                        <label className="text-[13px] font-medium text-text-secondary">รหัสผ่านใหม่</label>
-                        <div className="relative">
-                            <input
-                                type={showPasswords ? "text" : "password"}
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full h-11 bg-slate-50 border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-11"
-                                placeholder="อย่างน้อย 6 ตัวอักษร"
-                                required
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <label className="label">รหัสผ่านใหม่</label>
+                        <input
+                            type={showPasswords ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="input-field"
+                            placeholder="อย่างน้อย 6 ตัวอักษร"
+                            required
+                        />
                     </div>
 
-                    {/* Confirm New Password */}
-                    <div className="space-y-1.5">
-                        <label className="text-[13px] font-medium text-text-secondary">ยืนยันรหัสผ่านใหม่</label>
-                        <div className="relative">
-                            <input
-                                type={showPasswords ? "text" : "password"}
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full h-11 bg-slate-50 border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-11"
-                                placeholder="ป้อนรหัสผ่านใหม่อีกครั้ง"
-                                required
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <label className="label">ยืนยันรหัสผ่านใหม่</label>
+                        <input
+                            type={showPasswords ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="input-field"
+                            placeholder="ป้อนรหัสผ่านใหม่อีกครั้ง"
+                            required
+                        />
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-between">
                     <button
                         type="button"
                         onClick={() => setShowPasswords(!showPasswords)}
-                        className="flex items-center gap-2 text-xs text-text-muted hover:text-text-secondary transition-colors"
+                        className="flex items-center gap-2 text-[13px] text-text-muted hover:text-text-secondary transition-colors duration-200"
                     >
                         {showPasswords ? <EyeOff size={14} /> : <Eye size={14} />}
                         {showPasswords ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                     </button>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 h-11 border border-border rounded-xl text-sm font-semibold text-text-secondary hover:bg-slate-50 transition-colors"
+                        className="btn-secondary flex-1 h-12"
                     >
                         ยกเลิก
                     </button>
                     <button
                         type="submit"
                         disabled={loading}
-                        className="flex-[2] h-11 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-all shadow-btn disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="btn-primary flex-[2] h-12 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {loading ? (
                             <Loader2 size={18} className="animate-spin" />

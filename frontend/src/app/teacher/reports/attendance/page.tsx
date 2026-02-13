@@ -7,6 +7,7 @@ import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { toast } from 'sonner';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AttendanceReportPage() {
     const [classrooms, setClassrooms] = useState<any[]>([]);
@@ -16,12 +17,9 @@ export default function AttendanceReportPage() {
     const [fetching, setFetching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAllClassrooms, setShowAllClassrooms] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchClassrooms = async () => {
             try {
                 setLoading(true);
@@ -161,7 +159,7 @@ export default function AttendanceReportPage() {
                             </div>
                             <button
                                 onClick={() => setShowAllClassrooms(!showAllClassrooms)}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-text-secondary border-border hover:bg-slate-50'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary shadow-sm' : 'bg-surface text-text-secondary border-border hover:bg-surface-elevated'}`}
                             >
                                 {showAllClassrooms ? 'แสดงห้องฉัน' : 'ดูทุกห้อง'}
                             </button>
@@ -202,7 +200,7 @@ export default function AttendanceReportPage() {
 
                     {/* Student List Table */}
                     <div className="card overflow-hidden">
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-slate-50/50">
+                        <div className="p-4 border-b border-border flex justify-between items-center bg-surface-elevated/50">
                             <h3 className="font-bold text-text-primary">รายละเอียดรายบุคคล</h3>
                             <div className="relative w-64">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -224,7 +222,7 @@ export default function AttendanceReportPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="bg-slate-50 border-b border-border">
+                                        <tr className="bg-surface-elevated border-b border-border">
                                             <th className="px-6 py-3 text-xs font-bold text-text-secondary uppercase tracking-wider">รหัสนักเรียน</th>
                                             <th className="px-6 py-3 text-xs font-bold text-text-secondary uppercase tracking-wider">ชื่อ-นามสกุล</th>
                                             <th className="px-6 py-3 text-xs font-bold text-text-secondary uppercase tracking-wider text-center">มาเรียน</th>
@@ -236,7 +234,7 @@ export default function AttendanceReportPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {filteredStudents.map((s: any) => (
-                                            <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <tr key={s.id} className="hover:bg-surface-elevated/50 transition-colors group">
                                                 <td className="px-6 py-4 text-sm font-medium text-text-secondary">{s.studentCode}</td>
                                                 <td className="px-6 py-4 text-sm font-bold text-text-primary capitalize">{s.name}</td>
                                                 <td className="px-6 py-4 text-sm text-center font-semibold text-green-600">{s.stats.PRESENT}</td>
@@ -245,10 +243,10 @@ export default function AttendanceReportPage() {
                                                 <td className="px-6 py-4 text-sm text-center font-semibold text-blue-600">{s.stats.LEAVE}</td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                                        <div className="w-16 bg-border rounded-full h-1.5 overflow-hidden">
                                                             <div
-                                                                className={`h-full rounded-full ${s.attendanceRate >= 80 ? 'bg-green-500' :
-                                                                    s.attendanceRate >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                                                                className={`h-full rounded-full ${s.attendanceRate >= 80 ? 'bg-green-500/100' :
+                                                                    s.attendanceRate >= 60 ? 'bg-amber-500/100' : 'bg-red-500/100'
                                                                     }`}
                                                                 style={{ width: `${s.attendanceRate}%` }}
                                                             />

@@ -12,6 +12,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
+import { AUTH } from '../common/constants';
 
 @Controller('auth')
 export class AuthController {
@@ -33,11 +34,11 @@ export class AuthController {
     const loginResult = await this.authService.login(user);
 
     // Set HttpOnly cookie for security
-    response.cookie('access_token', loginResult.access_token, {
+    response.cookie(AUTH.COOKIE_NAME, loginResult.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: AUTH.COOKIE_MAX_AGE_MS,
       path: '/',
     });
 
@@ -49,7 +50,7 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('access_token', {
+    response.clearCookie(AUTH.COOKIE_NAME, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -62,5 +63,29 @@ export class AuthController {
   @Get('profile')
   async getProfile(@Req() req: any) {
     return this.authService.getProfile(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  async refresh(
+    @Req() req: any,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const user = await this.authService.getProfile(req.user.id);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const loginResult = await this.authService.login(user);
+
+    response.cookie(AUTH.COOKIE_NAME, loginResult.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: AUTH.COOKIE_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user: loginResult.user };
   }
 }

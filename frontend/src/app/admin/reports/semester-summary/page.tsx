@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 type SortKey = 'gpa' | 'attendance' | 'behavior' | 'risk';
 
@@ -17,14 +18,12 @@ export default function SemesterSummaryPage() {
     const [filterClassroom, setFilterClassroom] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
     const [viewTab, setViewTab] = useState<'all' | 'at-risk'>('all');
     const [sortKey, setSortKey] = useState<SortKey>('gpa');
     const [sortAsc, setSortAsc] = useState(true);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchClassrooms();
     }, []);
 
@@ -94,11 +93,11 @@ export default function SemesterSummaryPage() {
                     <div className="card p-5 mb-6">
                         <h3 className="text-sm font-bold text-text-primary mb-4">การกระจายเกรดเฉลี่ย (GPA)</h3>
                         <div className="flex items-end gap-2 h-28">
-                            <GpaBar label="≥ 3.5" count={overview.gpaDistribution.excellent} total={overview.totalStudents} color="bg-green-500" />
-                            <GpaBar label="3.0-3.49" count={overview.gpaDistribution.good} total={overview.totalStudents} color="bg-blue-500" />
-                            <GpaBar label="2.0-2.99" count={overview.gpaDistribution.fair} total={overview.totalStudents} color="bg-amber-500" />
-                            <GpaBar label="< 2.0" count={overview.gpaDistribution.poor} total={overview.totalStudents} color="bg-red-500" />
-                            <GpaBar label="ไม่มีเกรด" count={overview.gpaDistribution.none} total={overview.totalStudents} color="bg-slate-300" />
+                            <GpaBar label="≥ 3.5" count={overview.gpaDistribution.excellent} total={overview.totalStudents} color="bg-green-500/100" />
+                            <GpaBar label="3.0-3.49" count={overview.gpaDistribution.good} total={overview.totalStudents} color="bg-blue-500/100" />
+                            <GpaBar label="2.0-2.99" count={overview.gpaDistribution.fair} total={overview.totalStudents} color="bg-amber-500/100" />
+                            <GpaBar label="< 2.0" count={overview.gpaDistribution.poor} total={overview.totalStudents} color="bg-red-500/100" />
+                            <GpaBar label="ไม่มีเกรด" count={overview.gpaDistribution.none} total={overview.totalStudents} color="bg-text-muted" />
                         </div>
                     </div>
 
@@ -117,13 +116,13 @@ export default function SemesterSummaryPage() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
                             <input type="text" placeholder="ค้นหาชื่อ หรือรหัสนักเรียน..." className="input-field pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
-                        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                        <div className="flex gap-1 p-1 bg-secondary rounded-lg">
                             <button onClick={() => setViewTab('all')}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewTab === 'all' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewTab === 'all' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                                 ทั้งหมด ({students.length})
                             </button>
                             <button onClick={() => setViewTab('at-risk')}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewTab === 'at-risk' ? 'bg-white text-danger shadow-sm' : 'text-text-secondary'}`}>
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewTab === 'at-risk' ? 'bg-surface text-danger shadow-sm' : 'text-text-secondary'}`}>
                                 เสี่ยง ({students.filter((s: any) => s.isAtRisk).length})
                             </button>
                         </div>
@@ -134,7 +133,7 @@ export default function SemesterSummaryPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">นักเรียน</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden md:table-cell">ชั้น</th>
@@ -153,11 +152,11 @@ export default function SemesterSummaryPage() {
                                 </thead>
                                 <tbody className="divide-y divide-border-light">
                                     {filtered.map((s: any, i: number) => (
-                                        <tr key={s.id} className={`hover:bg-slate-50/50 transition-colors ${s.isAtRisk ? 'bg-red-50/30' : ''}`}>
+                                        <tr key={s.id} className={`hover:bg-surface-elevated/50 transition-colors ${s.isAtRisk ? 'bg-red-500/10/30' : ''}`}>
                                             <td className="px-4 py-3 text-sm text-text-muted">{(i + 1).toString().padStart(2, '0')}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-text-muted flex items-center justify-center text-xs font-semibold overflow-hidden border border-border">
+                                                    <div className="w-8 h-8 rounded-lg bg-secondary text-text-muted flex items-center justify-center text-xs font-semibold overflow-hidden border border-border">
                                                         {s.avatarUrl ? (
                                                             <img src={normalizeUrl(s.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                         ) : s.firstName?.[0] || 'S'}
@@ -179,8 +178,8 @@ export default function SemesterSummaryPage() {
                                             </td>
                                             <td className="px-4 py-3 hidden sm:table-cell">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div className={`h-full rounded-full ${s.attendance.rate >= 80 ? 'bg-green-500' : s.attendance.rate >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                    <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full ${s.attendance.rate >= 80 ? 'bg-green-500/100' : s.attendance.rate >= 60 ? 'bg-amber-500/100' : 'bg-red-500/100'}`}
                                                             style={{ width: `${Math.min(s.attendance.rate, 100)}%` }} />
                                                     </div>
                                                     <span className="text-xs font-medium text-text-secondary">{s.attendance.rate}%</span>
@@ -205,7 +204,7 @@ export default function SemesterSummaryPage() {
                                                 {s.isAtRisk ? (
                                                     <div className="space-y-1">
                                                         {s.risks.map((r: string, ri: number) => (
-                                                            <span key={ri} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-100 mr-1">
+                                                            <span key={ri} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-600 border border-danger/20 mr-1">
                                                                 <AlertTriangle size={10} /> {r}
                                                             </span>
                                                         ))}
@@ -252,7 +251,7 @@ function GpaBar({ label, count, total, color }: { label: string; count: number; 
     return (
         <div className="flex-1 flex flex-col items-center gap-1">
             <span className="text-xs font-bold text-text-primary">{count}</span>
-            <div className="w-full bg-slate-100 rounded-t-md relative" style={{ height: '80px' }}>
+            <div className="w-full bg-secondary rounded-t-md relative" style={{ height: '80px' }}>
                 <div className={`absolute bottom-0 left-0 right-0 ${color} rounded-t-md transition-all duration-500`}
                     style={{ height: `${Math.max(pct, 4)}%` }} />
             </div>
@@ -262,10 +261,10 @@ function GpaBar({ label, count, total, color }: { label: string; count: number; 
 }
 
 const riskColorMap: Record<string, string> = {
-    red: 'bg-red-50 border-red-200 text-red-700',
-    orange: 'bg-orange-50 border-orange-200 text-orange-700',
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-    rose: 'bg-rose-50 border-rose-200 text-rose-700',
+    red: 'bg-red-500/10 border-red-500/20 text-red-400',
+    orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+    amber: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+    rose: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
 };
 
 function RiskCard({ label, count, color }: { label: string; count: number; color: string }) {

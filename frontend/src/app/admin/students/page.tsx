@@ -10,6 +10,7 @@ import ImageUpload from '@/components/Common/ImageUpload';
 import Modal from '@/components/Common/Modal';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { ADMIN_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 export default function AdminStudentsPage() {
     const [students, setStudents] = useState<any[]>([]);
@@ -19,7 +20,7 @@ export default function AdminStudentsPage() {
     const [filterClassroom, setFilterClassroom] = useState<string>('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<any>(null);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', email: '', password: '',
@@ -27,14 +28,12 @@ export default function AdminStudentsPage() {
     });
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchStudents();
         fetchClassrooms();
     }, []);
 
     const fetchStudents = async () => {
-        try { const res = await api.get('/admin/students'); setStudents(res.data); }
+        try { const res = await api.get('/admin/students'); setStudents(Array.isArray(res.data) ? res.data : res.data.data ?? []); }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
     };
@@ -165,7 +164,7 @@ export default function AdminStudentsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-border bg-slate-50/50">
+                                    <tr className="border-b border-border bg-surface-elevated/50">
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary w-12">#</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary">นักเรียน</th>
                                         <th className="px-4 py-3 text-xs font-semibold text-text-secondary hidden md:table-cell">รหัส</th>
@@ -181,11 +180,11 @@ export default function AdminStudentsPage() {
                                         const gpa = s.gpa?.toFixed(2) || '0.00';
                                         const gpaNum = s.gpa || 0;
                                         return (
-                                            <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={s.id} className="hover:bg-surface-elevated/50 transition-colors">
                                                 <td className="px-4 py-3 text-sm text-text-muted">{(i + 1).toString().padStart(2, '0')}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-lg bg-slate-100 text-text-muted flex items-center justify-center text-sm font-semibold overflow-hidden border border-border">
+                                                        <div className="w-9 h-9 rounded-lg bg-secondary text-text-muted flex items-center justify-center text-sm font-semibold overflow-hidden border border-border">
                                                             {s.user?.avatarUrl ? (
                                                                 <img src={normalizeUrl(s.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                             ) : (
@@ -257,7 +256,7 @@ export default function AdminStudentsPage() {
                                         : '-';
                                     return (
                                         <button key={c.id} onClick={() => setFilterClassroom(c.id)}
-                                            className="p-3 rounded-xl border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all text-left">
+                                            className="p-3 rounded-xl border border-border bg-surface hover:border-primary/30 hover:shadow-sm transition-all text-left">
                                             <p className="text-xs font-bold text-text-primary">{c.grade?.level}/{c.roomNumber}</p>
                                             <p className="text-lg font-bold text-primary">{count} <span className="text-xs font-normal text-text-muted">คน</span></p>
                                             <p className="text-[10px] text-text-muted">GPA {roomAvgGpa}</p>

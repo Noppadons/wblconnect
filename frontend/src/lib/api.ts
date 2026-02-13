@@ -19,14 +19,56 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+let isRefreshing = false;
+let pendingQueue: { resolve: (v: unknown) => void; reject: (e: unknown) => void }[] = [];
+
+function processQueue(error: unknown) {
+    pendingQueue.forEach(({ resolve, reject }) => {
+        if (error) reject(error);
+        else resolve(undefined);
+    });
+    pendingQueue = [];
+}
+
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        if (error.response && error.response.status === 401) {
-            if (typeof window !== 'undefined') {
-                // Clear user info from storage on auth failure
-                localStorage.removeItem('user');
-                window.location.href = '/';
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            !originalRequest.url?.includes('/auth/refresh') &&
+            !originalRequest.url?.includes('/auth/login')
+        ) {
+            originalRequest._retry = true;
+
+            // If already refreshing, queue this request
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    pendingQueue.push({ resolve, reject });
+                }).then(() => api(originalRequest));
+            }
+
+            isRefreshing = true;
+            try {
+                const res = await api.post('/auth/refresh');
+                if (res.data?.user) {
+                    sessionStorage.setItem('user', JSON.stringify(res.data.user));
+                }
+                processQueue(null);
+                return api(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError);
+                // Refresh failed — clear and redirect
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('user');
+                    sessionStorage.removeItem('user');
+                    window.location.href = '/login';
+                }
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
             }
         }
         return Promise.reject(error);

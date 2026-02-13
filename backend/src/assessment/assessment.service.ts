@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AssessmentService {
+  private readonly logger = new Logger(AssessmentService.name);
+
   constructor(private prisma: PrismaService) { }
 
   async createAssignment(userId: string, data: any) {

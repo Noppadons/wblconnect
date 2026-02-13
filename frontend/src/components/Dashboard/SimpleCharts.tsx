@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Simple SVG Bar Chart
-export function SimpleBarChart({ data, height = 200, color = "#2563eb" }: { data: number[], height?: number, color?: string }) {
+export function SimpleBarChart({ data, height = 200, color = "#3b82f6" }: { data: number[], height?: number, color?: string }) {
     const max = Math.max(...data, 1);
 
     return (
@@ -9,14 +9,17 @@ export function SimpleBarChart({ data, height = 200, color = "#2563eb" }: { data
             {data.map((value, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center group relative">
                     <div
-                        className="w-full rounded-t-md opacity-80 hover:opacity-100 transition-all duration-300 relative"
+                        className="w-full rounded-t-lg transition-all duration-300 relative"
                         style={{
                             height: `${(value / max) * 100}%`,
-                            backgroundColor: color
+                            background: `linear-gradient(180deg, ${color} 0%, ${color}66 100%)`,
+                            opacity: 0.6,
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.boxShadow = `0 0 12px ${color}40`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                        {/* Tooltip */}
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                        <div className="absolute -top-9 left-1/2 -translate-x-1/2 text-white text-[11px] font-semibold py-1 px-2.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10"
+                             style={{ background: 'rgba(17,24,39,0.95)', border: '1px solid rgba(59,130,246,0.2)' }}>
                             {value}
                         </div>
                     </div>
@@ -27,7 +30,7 @@ export function SimpleBarChart({ data, height = 200, color = "#2563eb" }: { data
 }
 
 // Simple SVG Line Chart (Smooth Curve)
-export function SimpleLineChart({ data, height = 200, color = "#2563eb" }: { data: number[], height?: number, color?: string }) {
+export function SimpleLineChart({ data, height = 200, color = "#3b82f6" }: { data: number[], height?: number, color?: string }) {
     const max = Math.max(...data, 1);
     const min = 0;
     const range = max - min;

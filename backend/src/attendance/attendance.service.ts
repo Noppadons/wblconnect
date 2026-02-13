@@ -1,10 +1,12 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus } from '@prisma/client';
 import { LineService } from '../communication/line.service';
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     private prisma: PrismaService,
     private lineService: LineService,
@@ -66,7 +68,7 @@ export class AttendanceService {
         student: {
           include: {
             user: true,
-            classroom: true,
+            classroom: { include: { grade: true } },
           },
         },
       },
@@ -79,23 +81,86 @@ export class AttendanceService {
       let message = '';
       let shouldNotify = false;
 
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      const classroomName = student.classroom ? `${student.classroom.grade?.level || ''}/${student.classroom.roomNumber || ''}` : '';
+
       // Case 1: Morning Assembly (Period 0)
       if (data.period === 0) {
         if (data.status === AttendanceStatus.ABSENT) {
-          message = `❌ [ขาดการเข้าแถว]\nน้อง ${name}\nสถานะ: ขาดการเข้าแถวหน้าเสาธงครับ`;
+          message = [
+            `━━━━━━━━━━━━━━━`,
+            `🚨 แจ้งเตือน: ขาดการเข้าแถว`,
+            `━━━━━━━━━━━━━━━`,
+            `👤 นักเรียน: ${name}`,
+            classroomName ? `🏫 ชั้น: ${classroomName}` : '',
+            `📅 วันที่: ${dateStr}`,
+            `🕐 เวลา: ${timeStr} น.`,
+            ``,
+            `❌ สถานะ: ขาดการเข้าแถวหน้าเสาธง`,
+            ``,
+            `📌 กรุณาติดต่อครูประจำชั้นหากมีข้อสงสัย`,
+            `━━━━━━━━━━━━━━━`,
+            `🏫 WBL Connect`,
+          ].filter(Boolean).join('\n');
           shouldNotify = true;
         } else if (data.status === AttendanceStatus.LATE) {
-          message = `⏰ [เข้าแถวสาย]\nน้อง ${name}\nสถานะ: มาเข้าแถวสายครับ`;
+          message = [
+            `━━━━━━━━━━━━━━━`,
+            `⏰ แจ้งเตือน: เข้าแถวสาย`,
+            `━━━━━━━━━━━━━━━`,
+            `👤 นักเรียน: ${name}`,
+            classroomName ? `🏫 ชั้น: ${classroomName}` : '',
+            `📅 วันที่: ${dateStr}`,
+            `🕐 เวลา: ${timeStr} น.`,
+            ``,
+            `⚠️ สถานะ: มาเข้าแถวสาย`,
+            ``,
+            `📌 กรุณาติดต่อครูประจำชั้นหากมีข้อสงสัย`,
+            `━━━━━━━━━━━━━━━`,
+            `🏫 WBL Connect`,
+          ].filter(Boolean).join('\n');
           shouldNotify = true;
         }
       }
       // Case 2: Class Period (1-8)
       else {
         if (data.status === AttendanceStatus.ABSENT) {
-          message = `❌ [ขาดเรียน]\nน้อง ${name}\nสถานะ: ขาดเรียนในคาบที่ ${data.period} ครับ`;
+          message = [
+            `━━━━━━━━━━━━━━━`,
+            `🚨 แจ้งเตือน: ขาดเรียน`,
+            `━━━━━━━━━━━━━━━`,
+            `👤 นักเรียน: ${name}`,
+            classroomName ? `🏫 ชั้น: ${classroomName}` : '',
+            `📅 วันที่: ${dateStr}`,
+            `🕐 เวลา: ${timeStr} น.`,
+            `📚 คาบเรียน: คาบที่ ${data.period}`,
+            ``,
+            `❌ สถานะ: ขาดเรียน`,
+            ``,
+            `📌 กรุณาติดต่อครูประจำชั้นหากมีข้อสงสัย`,
+            `━━━━━━━━━━━━━━━`,
+            `🏫 WBL Connect`,
+          ].filter(Boolean).join('\n');
           shouldNotify = true;
         } else if (data.status === AttendanceStatus.LATE) {
-          message = `⏰ [มาสาย]\nน้อง ${name}\nสถานะ: มาเรียนสายในคาบที่ ${data.period} ครับ`;
+          message = [
+            `━━━━━━━━━━━━━━━`,
+            `⏰ แจ้งเตือน: มาเรียนสาย`,
+            `━━━━━━━━━━━━━━━`,
+            `👤 นักเรียน: ${name}`,
+            classroomName ? `🏫 ชั้น: ${classroomName}` : '',
+            `📅 วันที่: ${dateStr}`,
+            `🕐 เวลา: ${timeStr} น.`,
+            `📚 คาบเรียน: คาบที่ ${data.period}`,
+            ``,
+            `⚠️ สถานะ: มาเรียนสาย`,
+            ``,
+            `📌 กรุณาติดต่อครูประจำชั้นหากมีข้อสงสัย`,
+            `━━━━━━━━━━━━━━━`,
+            `🏫 WBL Connect`,
+          ].filter(Boolean).join('\n');
           shouldNotify = true;
         }
       }
@@ -113,7 +178,7 @@ export class AttendanceService {
         // No specific token found, skip notification
       }
     } catch (err) {
-      console.error('[Attendance] Notification Error:', err);
+      this.logger.warn(`LINE notification failed for student ${data.studentId}: ${(err as Error).message}`);
     }
 
     return attendance;
@@ -262,7 +327,7 @@ export class AttendanceService {
           await this.lineService.sendMessage(student.parentLineToken, message);
         }
       } catch (err) {
-        console.error('[Attendance] Notification Error:', err);
+        this.logger.warn(`LINE notification failed for student ${attendance.student?.id}: ${(err as Error).message}`);
       }
     }
   }
@@ -359,7 +424,7 @@ export class AttendanceService {
   }
 
   async getSemesterSummary(classroomId: string, startDate?: string, endDate?: string) {
-    const where: any = {
+    const where: { student: { classroomId: string }; date?: { gte?: Date; lte?: Date } } = {
       student: { classroomId },
     };
 
@@ -421,7 +486,7 @@ export class AttendanceService {
   }
 
   async getStudentAttendanceReport(studentId: string, startDate?: string, endDate?: string) {
-    const where: any = { studentId };
+    const where: { studentId: string; date?: { gte?: Date; lte?: Date } } = { studentId };
     if (startDate || endDate) {
       where.date = {};
       if (startDate) where.date.gte = new Date(startDate);

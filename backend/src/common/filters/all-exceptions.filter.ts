@@ -4,18 +4,25 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   constructor(private readonly httpAdapterHost: HttpAdapterHost) { }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
 
     // Log the actual exception for debugging
-    console.error('AllExceptionsFilter caught:', exception);
+    if (exception instanceof HttpException) {
+      this.logger.warn(`${exception.getStatus()} ${exception.message}`);
+    } else {
+      this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
+    }
 
     const ctx = host.switchToHttp();
 
@@ -30,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         : 'Internal server error';
 
     const request = ctx.getRequest();
-    const user = (request as any).user;
+    const user = (request as Record<string, any>).user;
 
     const responseBody = {
       statusCode: httpStatus,

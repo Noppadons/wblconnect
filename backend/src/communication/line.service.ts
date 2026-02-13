@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class LineService {
+  private readonly logger = new Logger(LineService.name);
   private readonly CHANNEL_ACCESS_TOKEN =
     process.env.LINE_CHANNEL_ACCESS_TOKEN || '';
   private readonly CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET || '';
@@ -16,9 +17,7 @@ export class LineService {
 
   async broadcastMessage(message: string) {
     if (!this.CHANNEL_ACCESS_TOKEN) {
-      console.warn(
-        '[LineService] Missing LINE_CHANNEL_ACCESS_TOKEN, skipping broadcast.',
-      );
+      this.logger.warn('Missing LINE_CHANNEL_ACCESS_TOKEN, skipping broadcast.');
       return;
     }
     try {
@@ -93,7 +92,7 @@ export class LineService {
       });
     } catch (err: any) {
       const errorMsg = JSON.stringify(err.response?.data) || err.message;
-      console.error('LINE Notify Error:', errorMsg);
+      this.logger.error(`LINE Notify Error: ${errorMsg}`);
       throw new InternalServerErrorException(`LINE Notify Error: ${errorMsg}`);
     }
   }
@@ -104,8 +103,24 @@ export class LineService {
     status: string,
     date: Date,
   ) {
-    const dateStr = date.toLocaleDateString('th-TH');
-    const message = `🔔 แจ้งเตือนการมาเรียน\nนักเรียน: ${studentName}\nสถานะ: ${status}\nวันที่: ${dateStr}`;
+    const dateStr = date.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const statusIcon = status === 'ขาดเรียน' || status === 'ABSENT' ? '🚨' : '⏰';
+    const statusEmoji = status === 'ขาดเรียน' || status === 'ABSENT' ? '❌' : '⚠️';
+    const message = [
+      `━━━━━━━━━━━━━━━`,
+      `${statusIcon} แจ้งเตือนการมาเรียน`,
+      `━━━━━━━━━━━━━━━`,
+      `👤 นักเรียน: ${studentName}`,
+      `📅 วันที่: ${dateStr}`,
+      `🕐 เวลา: ${timeStr} น.`,
+      ``,
+      `${statusEmoji} สถานะ: ${status}`,
+      ``,
+      `📌 กรุณาติดต่อครูประจำชั้นหากมีข้อสงสัย`,
+      `━━━━━━━━━━━━━━━`,
+      `🏫 WBL Connect`,
+    ].join('\n');
     return this.sendMessage(to, message);
   }
 
@@ -127,7 +142,7 @@ export class LineService {
       errorMsg = `LINE Authentication Failed (401). กรุณาตรวจสอบ LINE_CHANNEL_ACCESS_TOKEN ในไฟล์ .env ว่าคัดลอกมาถูกต้องครบถ้วนและยังไม่หมดอายุครับ (Error: ${errorMsg})`;
     }
 
-    console.error(`Line ${context} Error:`, errorMsg);
+    this.logger.error(`LINE ${context} Error: ${errorMsg}`);
     throw new InternalServerErrorException(`Line ${context} Error: ${errorMsg}`);
   }
 }

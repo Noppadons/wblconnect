@@ -42,8 +42,14 @@ export class AdminController {
   }
 
   @Get('students')
-  async findAllStudents(@Req() req: any) {
-    return this.adminService.findAllStudents();
+  async findAllStudents(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.findAllStudents(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+    );
   }
 
   @Post('students')
@@ -63,8 +69,14 @@ export class AdminController {
 
   // Teacher Management
   @Get('teachers')
-  async findAllTeachers(@Req() req: any) {
-    return this.adminService.findAllTeachers();
+  async findAllTeachers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.findAllTeachers(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+    );
   }
 
   @Post('teachers')

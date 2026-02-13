@@ -8,12 +8,13 @@ import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
+import { useUser } from '@/lib/useUser';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    PRESENT: { label: 'มาเรียน', color: 'text-green-600 bg-green-50' },
-    LATE: { label: 'มาสาย', color: 'text-amber-600 bg-amber-50' },
-    ABSENT: { label: 'ขาดเรียน', color: 'text-red-600 bg-red-50' },
-    LEAVE: { label: 'ลา', color: 'text-blue-600 bg-blue-50' },
+    PRESENT: { label: 'มาเรียน', color: 'text-green-600 bg-green-500/10' },
+    LATE: { label: 'มาสาย', color: 'text-amber-600 bg-amber-500/10' },
+    ABSENT: { label: 'ขาดเรียน', color: 'text-red-600 bg-red-500/10' },
+    LEAVE: { label: 'ลา', color: 'text-blue-600 bg-blue-500/10' },
 };
 
 export default function StudentDetailPage() {
@@ -24,12 +25,9 @@ export default function StudentDetailPage() {
     const [student, setStudent] = useState<any>(null);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
-
         const fetchData = async () => {
             try {
                 const [profileRes, statsRes] = await Promise.all([
@@ -83,7 +81,7 @@ export default function StudentDetailPage() {
             {/* Profile Header */}
             <div className="card p-5 mb-4">
                 <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl font-bold text-text-secondary overflow-hidden shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center text-2xl font-bold text-text-secondary overflow-hidden shrink-0">
                         {student.user?.avatarUrl ? (
                             <img src={normalizeUrl(student.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                         ) : student.user?.firstName?.[0] || '?'}
@@ -123,7 +121,7 @@ export default function StudentDetailPage() {
                                         <p className="text-sm text-text-primary">{new Date(a.date).toLocaleDateString('th-TH', { dateStyle: 'medium' })}</p>
                                         <p className="text-xs text-text-muted">คาบ {a.period}</p>
                                     </div>
-                                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${STATUS_LABELS[a.status]?.color || 'text-text-muted bg-slate-50'}`}>
+                                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${STATUS_LABELS[a.status]?.color || 'text-text-muted bg-surface-elevated'}`}>
                                         {STATUS_LABELS[a.status]?.label || a.status}
                                     </span>
                                 </div>
@@ -147,7 +145,7 @@ export default function StudentDetailPage() {
                                         <p className="text-sm text-text-primary">{b.content}</p>
                                         <p className="text-xs text-text-muted">{new Date(b.createdAt).toLocaleDateString('th-TH', { dateStyle: 'medium' })}</p>
                                     </div>
-                                    <span className={`text-xs font-bold px-2 py-1 rounded-lg shrink-0 ml-2 ${b.type === 'POSITIVE' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded-lg shrink-0 ml-2 ${b.type === 'POSITIVE' ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
                                         {b.points > 0 ? '+' : ''}{b.points}
                                     </span>
                                 </div>

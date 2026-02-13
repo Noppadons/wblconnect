@@ -11,6 +11,7 @@ import {
   RawBody,
   Req,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { LineService } from './line.service';
@@ -87,7 +88,18 @@ export class CommunicationController {
   async testBroadcastLine(@Body() data: BroadcastLineDto) {
     const msg =
       data.message ||
-      '🔔 ทดสอบการแจ้งเตือนแบบ Broadcast จากระบบ WBL Connect ครับ';
+      [
+        `━━━━━━━━━━━━━━━`,
+        `🔔 ทดสอบระบบแจ้งเตือน`,
+        `━━━━━━━━━━━━━━━`,
+        `📢 ข้อความนี้เป็นการทดสอบ`,
+        `การส่งแจ้งเตือนแบบ Broadcast`,
+        `ไปยังผู้ใช้ทุกคนในระบบ`,
+        ``,
+        `✅ ระบบแจ้งเตือนทำงานปกติ`,
+        `━━━━━━━━━━━━━━━`,
+        `🏫 WBL Connect`,
+      ].join('\n');
     try {
       await this.lineService.broadcastMessage(msg);
       return { success: true, message: 'Broadcast sent successfully' };
@@ -105,7 +117,17 @@ export class CommunicationController {
     try {
       await this.lineService.sendMessage(
         data.to,
-        '🔔 ทดสอบการแจ้งเตือนรายบุคคลจาก WBL Connect ครับ',
+        [
+          `━━━━━━━━━━━━━━━`,
+          `🔔 ทดสอบระบบแจ้งเตือน`,
+          `━━━━━━━━━━━━━━━`,
+          `📢 ข้อความนี้เป็นการทดสอบ`,
+          `การส่งแจ้งเตือนรายบุคคล`,
+          ``,
+          `✅ ระบบแจ้งเตือนทำงานปกติ`,
+          `━━━━━━━━━━━━━━━`,
+          `🏫 WBL Connect`,
+        ].join('\n'),
       );
       return { success: true };
     } catch (error: any) {
@@ -128,7 +150,7 @@ export class CommunicationController {
       rawBody.toString(),
     );
     if (!isValid) {
-      console.warn('[Webhook] Invalid signature received');
+      new Logger('CommunicationController').warn('Webhook: Invalid signature received');
       return { success: false, message: 'Invalid signature' };
     }
 

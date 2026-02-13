@@ -5,12 +5,13 @@ import { Bell, Megaphone, AlertCircle, Info, Pin, CheckCircle, X, ExternalLink }
 import api, { API_URL } from '@/lib/api';
 import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
+import type { Notification } from '@/lib/types';
 
 export default function NotificationCenter({ targetId }: { targetId?: string }) {
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [selectedNote, setSelectedNote] = useState<any>(null);
+    const [selectedNote, setSelectedNote] = useState<Notification | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -77,8 +78,8 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                     <Megaphone size={16} className="text-amber-500" />
                     ข่าวสารประกาศ
                 </h3>
-                {unreadCount > 0 && <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">{unreadCount}</span>}
-                <span className="text-[10px] bg-slate-100 text-text-muted px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{notifications.length} รายการ</span>
+                {unreadCount > 0 && <span className="bg-rose-500/100 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">{unreadCount}</span>}
+                <span className="text-[10px] bg-secondary text-text-muted px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{notifications.length} รายการ</span>
             </div>
 
             {loading ? (
@@ -89,11 +90,11 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                 <div className="space-y-1">
                     {notifications.map((note) => (
                         <div key={note.id} onClick={() => handleNoteClick(note)}
-                            className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer group relative ${note.isPinned ? 'bg-primary/5 border border-primary/10 shadow-sm' : 'hover:bg-slate-50 border border-transparent'} ${!note.isRead ? 'ring-1 ring-blue-500/10' : ''}`}>
+                            className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer group relative ${note.isPinned ? 'bg-primary/5 border border-primary/10 shadow-sm' : 'hover:bg-surface-elevated border border-transparent'} ${!note.isRead ? 'ring-1 ring-blue-500/10' : ''}`}>
 
-                            {!note.isRead && <div className="absolute top-3 left-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                            {!note.isRead && <div className="absolute top-3 left-1.5 w-1.5 h-1.5 bg-blue-500/100 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
 
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden ${note.type === 'ALERT' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden ${note.type === 'ALERT' ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                 {note.imageUrl ? (
                                     <img src={normalizeUrl(note.imageUrl)} className="w-full h-full object-cover" alt="" />
                                 ) : (
@@ -108,7 +109,7 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                                             <p className={`text-[15px] font-bold truncate ${!note.isRead ? 'text-text-primary' : 'text-text-secondary'}`}>{note.title}</p>
                                         </div>
                                     </div>
-                                    <span className="text-[11px] text-text-muted shrink-0 font-medium bg-slate-100 px-2 py-0.5 rounded-full">{new Date(note.createdAt).toLocaleDateString('th-TH')}</span>
+                                    <span className="text-[11px] text-text-muted shrink-0 font-medium bg-secondary px-2 py-0.5 rounded-full">{new Date(note.createdAt).toLocaleDateString('th-TH')}</span>
                                 </div>
                                 <p className="text-[13px] text-text-muted line-clamp-1 mt-1 leading-relaxed">{note.content}</p>
                             </div>
@@ -125,11 +126,11 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
             {/* Notification Detail Modal */}
             {selectedNote && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in" onClick={() => setSelectedNote(null)} />
-                    <div className="relative bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 flex flex-col max-h-[90vh]">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in" onClick={() => setSelectedNote(null)} />
+                    <div className="relative bg-surface w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 flex flex-col max-h-[90vh]">
                         {/* Header Image with Container Logic */}
                         {selectedNote.imageUrl ? (
-                            <div className="w-full h-64 sm:h-80 relative bg-slate-50 border-b border-slate-100">
+                            <div className="w-full h-64 sm:h-80 relative bg-surface-elevated border-b border-border-light">
                                 <img
                                     src={normalizeUrl(selectedNote.imageUrl)}
                                     alt=""
@@ -143,22 +144,22 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                                 />
                             </div>
                         ) : (
-                            <div className="w-full h-32 bg-gradient-to-br from-primary/5 to-blue-50 border-b border-border/50 flex items-center justify-center">
+                            <div className="w-full h-32 bg-gradient-to-br from-primary/5 to-primary/10 border-b border-border/50 flex items-center justify-center">
                                 <Megaphone size={48} className="text-primary/20" />
                             </div>
                         )}
 
                         <div className="p-8 sm:p-10 overflow-y-auto custom-scrollbar flex-1">
                             <div className="flex flex-wrap items-center gap-3 mb-6">
-                                <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest ${selectedNote.type === 'ALERT' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}`}>
+                                <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest ${selectedNote.type === 'ALERT' ? 'bg-danger/15 text-danger' : 'bg-primary/15 text-primary'}`}>
                                     {selectedNote.type === 'ALERT' ? 'ข้อมูลด่วน' : 'ข่าวประชาสัมพันธ์'}
                                 </span>
                                 {selectedNote.isPinned && (
-                                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                    <span className="bg-warning/15 text-warning px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                                         <Pin size={12} className="fill-current" /> สำคัญมาก
                                     </span>
                                 )}
-                                <span className="text-[12px] text-text-muted font-bold ml-auto bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                                <span className="text-[12px] text-text-muted font-bold ml-auto bg-surface-elevated px-3 py-1 rounded-full border border-border-light">
                                     {new Date(selectedNote.createdAt).toLocaleDateString('th-TH', {
                                         day: 'numeric',
                                         month: 'long',
@@ -176,13 +177,13 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                             </div>
                         </div>
 
-                        <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+                        <div className="p-6 sm:p-8 bg-surface-elevated border-t border-border-light flex gap-4">
                             <button onClick={() => setSelectedNote(null)} className="btn-primary w-full py-4 text-base font-bold rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]">
                                 เข้าใจแล้ว
                             </button>
                         </div>
 
-                        <button onClick={() => setSelectedNote(null)} className="absolute top-4 right-4 bg-white/60 backdrop-blur-md shadow-sm p-2 rounded-full hover:bg-white text-text-muted hover:text-text-primary transition-all z-20 hover:rotate-90 duration-300">
+                        <button onClick={() => setSelectedNote(null)} className="absolute top-4 right-4 bg-surface/80 backdrop-blur-md shadow-sm p-2 rounded-full hover:bg-surface-elevated text-text-muted hover:text-text-primary transition-all z-20 hover:rotate-90 duration-300">
                             <X size={20} />
                         </button>
                     </div>

@@ -8,23 +8,32 @@ import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
 import { toast } from 'sonner';
 import { STUDENT_SIDEBAR } from '@/lib/sidebar';
+import type { Assignment, UploadResponse } from '@/lib/types';
+import { useUser } from '@/lib/useUser';
+
+interface StudentAssignment extends Assignment {
+    mySubmission?: { id: string; status: string; points?: number | null; feedback?: string | null };
+}
+
+interface AttachmentFile {
+    name: string;
+    url: string;
+}
 
 export default function StudentAssignmentsPage() {
-    const [assignments, setAssignments] = useState<any[]>([]);
+    const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'PENDING' | 'SUBMITTED'>('PENDING');
-    const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
-    const [viewAssignment, setViewAssignment] = useState<any | null>(null);
+    const [selectedAssignment, setSelectedAssignment] = useState<StudentAssignment | null>(null);
+    const [viewAssignment, setViewAssignment] = useState<StudentAssignment | null>(null);
     const [submissionContent, setSubmissionContent] = useState('');
-    const [attachments, setAttachments] = useState<any[]>([]);
+    const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
     const [uploading, setUploading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useUser();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
         fetchMyAssignments();
     }, []);
 
@@ -97,13 +106,13 @@ export default function StudentAssignmentsPage() {
     return (
         <AppShell role="STUDENT" sidebarItems={STUDENT_SIDEBAR} user={user} pageTitle="งานที่ได้รับ" pageSubtitle={`${pendingAssignments.length} รอส่ง • ${submittedAssignments.length} ส่งแล้ว`}>
             {/* Tabs */}
-            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg max-w-sm mb-4">
+            <div className="flex gap-1 p-1 bg-secondary rounded-lg max-w-sm mb-4">
                 <button onClick={() => setActiveTab('PENDING')}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'PENDING' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'PENDING' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                     รอส่ง ({pendingAssignments.length})
                 </button>
                 <button onClick={() => setActiveTab('SUBMITTED')}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'SUBMITTED' ? 'bg-white text-text-primary shadow-sm' : 'text-text-secondary'}`}>
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'SUBMITTED' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
                     ส่งแล้ว ({submittedAssignments.length})
                 </button>
             </div>
@@ -114,9 +123,9 @@ export default function StudentAssignmentsPage() {
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {displayList.map((a: any) => {
-                        const overdue = isOverdue(a.dueDate);
-                        const dueSoon = isDueSoon(a.dueDate);
+                    {displayList.map((a) => {
+                        const overdue = a.dueDate ? isOverdue(a.dueDate) : false;
+                        const dueSoon = a.dueDate ? isDueSoon(a.dueDate) : false;
                         const isGraded = a.mySubmission?.status === 'GRADED';
 
                         return (
@@ -135,7 +144,7 @@ export default function StudentAssignmentsPage() {
                                                 {a.attachments.map((url: string, i: number) => (
                                                     <a key={i} href={normalizeUrl(url)}
                                                         target="_blank" rel="noreferrer"
-                                                        className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
+                                                        className="flex items-center gap-1.5 px-2 py-1 bg-surface-elevated border border-border rounded-md text-[10px] font-bold text-primary hover:border-primary transition-colors"
                                                     >
                                                         <Upload size={10} className="rotate-180" /> ไฟล์คำสั่ง {i + 1}
                                                     </a>
@@ -152,16 +161,16 @@ export default function StudentAssignmentsPage() {
                                             )}
                                             {isGraded && (
                                                 <span className="flex items-center gap-1 text-green-600 font-semibold">
-                                                    <Star size={12} /> {a.mySubmission.points}/{a.maxPoints}
+                                                    <Star size={12} /> {a.mySubmission?.points}/{a.maxPoints}
                                                 </span>
                                             )}
                                         </div>
                                         {/* Feedback from teacher */}
-                                        {isGraded && a.mySubmission.feedback && (
-                                            <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                                                <p className="text-xs text-green-800 flex items-start gap-1.5">
+                                        {isGraded && a.mySubmission?.feedback && (
+                                            <div className="mt-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                                                <p className="text-xs text-green-400 flex items-start gap-1.5">
                                                     <MessageSquare size={12} className="shrink-0 mt-0.5" />
-                                                    <span><strong>ครูให้ feedback:</strong> {a.mySubmission.feedback}</span>
+                                                    <span><strong>ครูให้ feedback:</strong> {a.mySubmission?.feedback}</span>
                                                 </p>
                                             </div>
                                         )}
@@ -172,7 +181,7 @@ export default function StudentAssignmentsPage() {
                                                 <Send size={13} /> ส่งงาน
                                             </button>
                                         ) : (
-                                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${isGraded ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${isGraded ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
                                                 {isGraded ? <><CheckCircle2 size={13} /> ตรวจแล้ว</> : <><Clock size={13} /> รอตรวจ</>}
                                             </span>
                                         )}
@@ -200,7 +209,7 @@ export default function StudentAssignmentsPage() {
             <Modal isOpen={!!selectedAssignment} onClose={() => { setSelectedAssignment(null); setSubmitSuccess(false); }} title="ส่งงาน" subtitle={selectedAssignment?.title}>
                 {submitSuccess ? (
                     <div className="p-6 flex flex-col items-center justify-center py-12">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
+                        <div className="w-16 h-16 bg-green-500/15 rounded-full flex items-center justify-center text-green-600 mb-4">
                             <CheckCircle2 size={32} />
                         </div>
                         <h3 className="text-lg font-bold text-text-primary mb-1">ส่งงานสำเร็จ!</h3>
@@ -209,18 +218,18 @@ export default function StudentAssignmentsPage() {
                 ) : (
                     <div className="p-6 space-y-4">
                         {/* Assignment details */}
-                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-border">
+                        <div className="px-4 py-3 bg-surface-elevated rounded-lg border border-border">
                             <p className="text-xs font-semibold text-text-secondary mb-1 flex items-center gap-1"><BookOpen size={12} /> รายละเอียดงาน</p>
                             <p className="text-sm text-text-primary">{selectedAssignment?.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
 
                             {/* Teacher's Attachments */}
-                            {selectedAssignment?.attachments?.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-slate-200">
+                            {(selectedAssignment?.attachments?.length ?? 0) > 0 && (
+                                <div className="mt-3 pt-3 border-t border-border">
                                     <p className="text-[10px] font-bold text-text-muted uppercase mb-2 tracking-wider">เอกสารประกอบการสั่งงาน</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {selectedAssignment.attachments.map((url: string, i: number) => (
+                                        {selectedAssignment?.attachments?.map((url: string, i: number) => (
                                             <a key={i} href={normalizeUrl(url)} target="_blank" rel="noreferrer"
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-border rounded-lg text-xs font-medium text-primary hover:border-primary transition-colors">
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-medium text-primary hover:border-primary transition-colors">
                                                 <Upload size={12} className="rotate-180" />
                                                 ไฟล์ที่ {i + 1}
                                             </a>
@@ -250,15 +259,15 @@ export default function StudentAssignmentsPage() {
                             <label className="label">แนบไฟล์งานของคุณ</label>
                             <div className="flex flex-wrap gap-2 mb-2">
                                 {attachments.map((file, i) => (
-                                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-medium">
+                                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg text-xs font-medium">
                                         <span className="truncate max-w-[150px]">{file.name}</span>
-                                        <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-700">
+                                        <button type="button" onClick={() => removeAttachment(i)} className="text-red-500 hover:text-red-400">
                                             <X size={14} />
                                         </button>
                                     </div>
                                 ))}
                             </div>
-                            <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-primary/50'}`}>
+                            <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploading ? 'bg-surface-elevated border-border' : 'bg-surface border-border hover:border-primary/50'}`}>
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Upload size={20} className="text-text-muted mb-1" />
                                     <p className="text-xs text-text-muted">อัปโหลดไฟล์ (PDF, รูปภาพ, เอกสาร)</p>

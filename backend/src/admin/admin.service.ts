@@ -1,10 +1,12 @@
-import { Injectable, ConflictException, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { SchoolService } from '../school/school.service';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private prisma: PrismaService,
     private schoolService: SchoolService,
@@ -122,27 +124,37 @@ export class AdminService {
     return { attendanceTrend, scoreDistribution, recentNotifications };
   }
 
-  async findAllStudents() {
-    return this.prisma.student.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            avatarUrl: true,
-            createdAt: true,
+  async findAllStudents(page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.student.findMany({
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              avatarUrl: true,
+              createdAt: true,
+            },
+          },
+          classroom: {
+            include: {
+              grade: true,
+            },
           },
         },
-        classroom: {
-          include: {
-            grade: true,
-          },
-        },
-      },
-    });
+      }),
+      this.prisma.student.count(),
+    ]);
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async createStudent(data: any) {
@@ -267,27 +279,37 @@ export class AdminService {
   }
 
   // Teacher Management
-  async findAllTeachers() {
-    return this.prisma.teacher.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            avatarUrl: true,
-            createdAt: true,
+  async findAllTeachers(page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.teacher.findMany({
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              avatarUrl: true,
+              createdAt: true,
+            },
+          },
+          homeroomClass: {
+            include: {
+              grade: true,
+            },
           },
         },
-        homeroomClass: {
-          include: {
-            grade: true,
-          },
-        },
-      },
-    });
+      }),
+      this.prisma.teacher.count(),
+    ]);
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async createTeacher(data: any) {
