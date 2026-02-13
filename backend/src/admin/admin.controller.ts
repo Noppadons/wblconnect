@@ -33,13 +33,11 @@ export class AdminController {
 
   @Get('stats')
   async getDashboardStats(@Req() req: any) {
-    console.log('[AdminController] getDashboardStats');
     return this.adminService.getDashboardStats();
   }
 
   @Get('charts')
   async getDashboardCharts(@Req() req: any) {
-    console.log('[AdminController] getDashboardCharts');
     return this.adminService.getDashboardCharts();
   }
 
@@ -66,12 +64,7 @@ export class AdminController {
   // Teacher Management
   @Get('teachers')
   async findAllTeachers(@Req() req: any) {
-    try {
-      return await this.adminService.findAllTeachers();
-    } catch (error) {
-      console.error('[AdminController] Error in findAllTeachers:', error);
-      throw error;
-    }
+    return this.adminService.findAllTeachers();
   }
 
   @Post('teachers')

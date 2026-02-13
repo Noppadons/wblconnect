@@ -26,12 +26,6 @@ async function bootstrap() {
 
         app.use(cookieParser());
 
-        // Debugging middleware
-        app.use((req: any, res: any, next: any) => {
-            console.log(`[Vercel Bridge] Request: ${req.method} ${req.url}`);
-            next();
-        });
-
         // Security Hardening
         if (typeof helmet === 'function') {
             app.use(helmet({
@@ -42,7 +36,7 @@ async function bootstrap() {
         app.useGlobalInterceptors(new NoCacheInterceptor());
 
         app.enableCors({
-            origin: true,
+            origin: process.env.FRONTEND_URL || 'http://localhost:3000',
             credentials: true,
         });
 
@@ -59,7 +53,6 @@ async function bootstrap() {
         }));
 
         await app.init();
-        console.log('[Vercel Bridge] NestJS App Initialized');
     }
     return server;
 }

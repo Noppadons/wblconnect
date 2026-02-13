@@ -94,6 +94,7 @@ model Student {
   gpa             Float    @default(0.00)
 
   @@index([classroomId])
+  @@index([gpa])
 }
 
 model Teacher {
@@ -121,6 +122,10 @@ model Subject {
   semesterId  String?
   semester    Semester?   @relation(fields: [semesterId], references: [id])
   students    StudentSubject[]
+
+  @@index([teacherId])
+  @@index([classroomId])
+  @@index([semesterId])
 }
 
 model Assignment {
@@ -137,6 +142,8 @@ model Assignment {
   updatedAt   DateTime     @updatedAt
   classroom   Classroom?   @relation(fields: [classroomId], references: [id], onDelete: SetNull)
   classroomId String?      // This matches the AssessmentService implementation
+  @@index([subjectId])
+  @@index([classroomId])
 }
 
 model Submission {
@@ -180,8 +187,11 @@ model Attendance {
   remarks   String?
 
   @@index([date])
+  @@index([status])
+  @@index([period])
   @@index([studentId])
   @@index([studentId, date, period])
+  @@unique([studentId, date, period], name: "studentId_date_period")
 }
 
 model BehaviorLog {
@@ -220,6 +230,7 @@ model UserNotification {
   createdAt      DateTime     @default(now())
 
   @@unique([userId, notificationId])
+  @@index([userId])
 }
 
 model StudentSubject {

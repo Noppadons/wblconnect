@@ -11,25 +11,22 @@ export class AuthService {
   ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
-    console.log(`[AuthService] Validating user: ${email}`);
-    const user = await this.usersService.findByEmail(email);
+    const normalizedEmail = email.toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
 
-    if (!user) {
-      console.log(`[AuthService] User NOT found: ${email}`);
-      return null;
-    }
-
-    console.log(`[AuthService] User found. Stored password prefix: ${user.password.substring(0, 7)}... Length: ${user.password.length}`);
-    console.log(`[AuthService] Incoming password length: ${pass?.length}`);
+    if (!user) return null;
 
     const isMatch = await bcrypt.compare(pass, user.password);
-    console.log(`[AuthService] Comparison result: ${isMatch}`);
 
     if (isMatch) {
       const { password, ...result } = user;
       return result;
     }
     return null;
+  }
+
+  async getProfile(userId: string) {
+    return this.usersService.findById(userId);
   }
 
   async login(user: any) {

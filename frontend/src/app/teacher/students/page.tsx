@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Search, ChevronRight, ChevronDown, GraduationCap, TrendingUp, AlertTriangle, Heart, School } from 'lucide-react';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
@@ -25,43 +26,24 @@ export default function MyStudentsPage() {
 
         const fetchData = async () => {
             try {
-                // ดึงห้องที่ปรึกษา
-                let myRooms: any[] = [];
-                try {
-                    const myRes = await api.get('/school/my-classrooms');
-                    myRooms = myRes.data || [];
-                } catch { }
+                // ดึงห้องที่ครูเกี่ยวข้อง (homeroom + สอนวิชา)
+                const myRes = await api.get('/school/my-classrooms');
+                const myRooms: any[] = myRes.data || [];
 
                 // ดึงทุกห้องเรียน
-                const yearsRes = await api.get('/school/academic-years');
-                let allRooms: any[] = [];
-                if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                    const semesters = yearsRes.data[0].semesters;
-                    // Smart pick: if Feb (1), pick Term 2 if available
-                    const month = new Date().getMonth(); // 0-11
-                    const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
-                    let semesterId = semesters[0].id;
+                const allRes = await api.get('/school/all-classrooms');
+                const allRooms: any[] = allRes.data || [];
 
-                    if (isTerm2Time) {
-                        const term2 = semesters.find((s: any) => s.term === 2);
-                        if (term2) semesterId = term2.id;
-                    }
-
-                    const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
-                    allRooms = classroomsRes.data || [];
-                }
-
-                // หาห้องที่ปรึกษา — ห้องที่ homeroomTeacher.userId ตรงกับ user ปัจจุบัน
+                // หาห้องที่ปรึกษา
                 const storedUser = localStorage.getItem('user');
                 const currentUserId = storedUser ? JSON.parse(storedUser).id : null;
-                const homeroom = allRooms.find(r =>
+                const homeroom = myRooms.find(r =>
+                    r.homeroomTeacher?.userId === currentUserId || r.homeroomTeacher?.user?.id === currentUserId || r.isHomeroom
+                ) || allRooms.find(r =>
                     r.homeroomTeacher?.userId === currentUserId || r.homeroomTeacher?.user?.id === currentUserId
-                ) || (myRooms.find(r =>
-                    r.homeroomTeacher?.userId === currentUserId || r.homeroomTeacher?.user?.id === currentUserId
-                )) || null;
+                ) || null;
 
                 setHomeroomClassroom(homeroom);
-                // Fallback: if allRooms is empty but teacher has rooms, show teacher's rooms
                 setAllClassrooms(allRooms.length > 0 ? allRooms : myRooms);
 
                 // ถ้ามีห้องที่ปรึกษา → เริ่มที่ tab homeroom
@@ -202,7 +184,7 @@ export default function MyStudentsPage() {
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-text-secondary overflow-hidden">
                                                             {student.user?.avatarUrl ? (
-                                                                <img src={student.user.avatarUrl.startsWith('http') ? student.user.avatarUrl : `${API_URL}${student.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                                                                <img src={normalizeUrl(student.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                             ) : student.user?.firstName?.[0] || '?'}
                                                         </div>
                                                         <div>

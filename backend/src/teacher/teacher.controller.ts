@@ -5,7 +5,6 @@ import {
   Body,
   UseGuards,
   Req,
-  Param,
   Query,
 } from '@nestjs/common';
 import { TeacherService } from './teacher.service';
@@ -13,6 +12,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { AddBehaviorDto } from './dto/behavior.dto';
 
 @Controller('teacher')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,16 +30,23 @@ export class TeacherController {
     return this.teacherService.getMySchedule(req.user.id);
   }
 
+  @Get('my-classrooms')
+  async getMyClassrooms(@Req() req: any) {
+    return this.teacherService.getMyClassrooms(req.user.id);
+  }
+
   @Get('my-students')
-  async getMyStudents(@Req() req: any) {
-    return this.teacherService.getMyStudents(req.user.id);
+  async getMyStudents(
+    @Req() req: any,
+    @Query('classroomId') classroomId?: string,
+  ) {
+    return this.teacherService.getMyStudents(req.user.id, classroomId);
   }
 
   @Post('behavior')
   async addBehaviorScore(
     @Req() req: any,
-    @Body()
-    body: { studentId: string; points: number; type: string; content: string },
+    @Body() body: AddBehaviorDto,
   ) {
     return this.teacherService.addBehaviorScore(
       req.user.id,
@@ -50,14 +57,16 @@ export class TeacherController {
     );
   }
 
-  @Get('behavior-logs/:classroomId')
+  @Get('behavior-logs')
   async getBehaviorLogs(
-    @Param('classroomId') classroomId: string,
+    @Req() req: any,
+    @Query('classroomId') classroomId?: string,
     @Query('limit') limit?: string,
   ) {
     return this.teacherService.getBehaviorLogsByClassroom(
+      req.user.id,
       classroomId,
-      parseInt(limit || '30'),
+      parseInt(limit || '50'),
     );
   }
 }

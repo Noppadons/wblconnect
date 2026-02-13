@@ -37,12 +37,21 @@ export default function AdminCommunicationPage() {
         try {
             const res = await api.get('/school/classrooms');
             setClassrooms(res.data);
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error(err);
+            toast.error('ไม่สามารถโหลดข้อมูลห้องเรียนได้');
+        }
     };
 
     const fetchNotifications = async () => {
-        try { const res = await api.get('/communication/notifications'); setNotifications(res.data); }
-        catch (err) { console.error(err); }
+        try {
+            const res = await api.get('/communication/notifications');
+            setNotifications(res.data);
+        }
+        catch (err) {
+            console.error(err);
+            toast.error('ไม่สามารถโหลดข้อมูลประกาศได้');
+        }
         finally { setLoading(false); }
     };
 

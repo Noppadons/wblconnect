@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="th">
       <body
         className={`${prompt.variable} ${inter.variable} antialiased font-sans bg-background text-text-primary`}
       >

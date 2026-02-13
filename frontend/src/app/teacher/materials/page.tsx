@@ -5,6 +5,7 @@ import { BookOpen, Plus, FileText, Trash2, Download, Upload, Search, Filter, X, 
 import AppShell from '@/components/Layout/AppShell';
 import Modal from '@/components/Common/Modal';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import { TEACHER_SIDEBAR } from '@/lib/sidebar';
 
@@ -62,22 +63,32 @@ export default function TeacherMaterialsPage() {
         setUploading(true);
         const toastId = toast.loading('กำลังอัปโหลดไฟล์...');
         try {
-            const fd = new FormData();
-            fd.append('file', file);
-            const res = await api.post('/upload/document', fd, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await api.post('/upload/document', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
             });
-            setFormData(prev => ({
-                ...prev,
-                fileUrl: res.data.url,
-                fileType: res.data.type || file.name.split('.').pop() || 'file'
-            }));
-            toast.success('อัปโหลดไฟล์สำเร็จ', { id: toastId });
-        } catch (err) {
-            console.error(err);
-            toast.error('อัปโหลดไฟล์ล้มเหลว', { id: toastId });
+
+            if (res.data?.url) {
+                setFormData(prev => ({
+                    ...prev,
+                    fileUrl: res.data.url,
+                    fileType: res.data.type || file.name.split('.').pop() || 'file'
+                }));
+                toast.success('อัปโหลดไฟล์สำเร็จ', { id: toastId });
+            } else {
+                throw new Error('ไม่ได้รับ URL ของไฟล์กลับมาจากเซิร์ฟเวอร์');
+            }
+        } catch (err: any) {
+            console.error('Upload Error Details:', err);
+            const msg = err.response?.data?.message || err.message || 'เครือข่ายขัดข้อง';
+            toast.error(`อัปโหลดไฟล์ล้มเหลว: ${msg}`, { id: toastId });
         } finally {
             setUploading(false);
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -154,7 +165,7 @@ export default function TeacherMaterialsPage() {
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{m.fileType || 'FILE'}</span>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <a href={`${API_URL}${m.fileUrl}`} target="_blank" rel="noreferrer" title="ดาวน์โหลด"
+                                            <a href={normalizeUrl(m.fileUrl, true)} target="_blank" rel="noreferrer" download={m.title} title="ดาวน์โหลด"
                                                 className="p-1.5 text-text-muted hover:text-primary transition-colors">
                                                 <Download size={16} />
                                             </a>

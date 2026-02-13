@@ -17,7 +17,7 @@ import {
   CreateAssignmentDto,
   SubmitAssignmentDto,
   GradeSubmissionDto,
-  BulkGradeItemDto,
+  BulkGradeDto,
 } from './dto/create-assignment.dto';
 
 @Controller('assessment')
@@ -28,14 +28,13 @@ export class AssessmentController {
   @Roles(Role.TEACHER, Role.ADMIN)
   @UseGuards(RolesGuard)
   @Post('assignment')
-  async createAssignment(@Body() data: CreateAssignmentDto) {
-    return this.assessmentService.createAssignment(data);
+  async createAssignment(@Req() req: any, @Body() data: CreateAssignmentDto) {
+    return this.assessmentService.createAssignment(req.user.id, data);
   }
-
   @Roles(Role.STUDENT)
   @UseGuards(RolesGuard)
   @Post('submit')
-  async submitAssignment(@Req() req: any, @Body() data: any) {
+  async submitAssignment(@Req() req: any, @Body() data: SubmitAssignmentDto) {
     return this.assessmentService.submitAssignment({
       ...data,
       userId: req.user.id,
@@ -82,9 +81,8 @@ export class AssessmentController {
   @Roles(Role.TEACHER, Role.ADMIN)
   @UseGuards(RolesGuard)
   @Post('bulk-grade/:id')
-  async bulkGrade(@Req() req: any, @Param('id') id: string, @Body() body: any) {
-    // Handle both: [ {...} ] AND { grades: [ {...} ] }
-    const grades = Array.isArray(body) ? body : body.grades || [];
+  async bulkGrade(@Req() req: any, @Param('id') id: string, @Body() body: BulkGradeDto) {
+    const grades = body.grades || [];
     return this.assessmentService.bulkUpdateGrades(req.user.id, id, grades);
   }
 

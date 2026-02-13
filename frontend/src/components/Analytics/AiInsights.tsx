@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Brain, TrendingUp, Activity, Lightbulb } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 
 interface Recommendation {
     subject: string;
@@ -72,14 +73,14 @@ export default function AiInsights({ studentId }: { studentId: string }) {
                 </div>
             </div>
 
-            {data.recommendations.length > 0 && (
+            {(data.recommendations?.length ?? 0) > 0 && (
                 <div className="card p-5">
                     <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-3">
                         <Lightbulb size={16} className="text-amber-500" />
                         ข้อแนะนำ
                     </h3>
                     <div className="space-y-2">
-                        {data.recommendations.map((rec, i) => (
+                        {data.recommendations?.map((rec, i) => (
                             <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
                                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${rec.priority === 'HIGH' ? 'bg-red-500' : rec.priority === 'MEDIUM' ? 'bg-amber-500' : 'bg-green-500'}`} />
                                 <div className="min-w-0">

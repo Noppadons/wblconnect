@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Megaphone, AlertCircle, Info, Pin, CheckCircle, X, ExternalLink } from 'lucide-react';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 
 export default function NotificationCenter({ targetId }: { targetId?: string }) {
@@ -12,8 +13,27 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
     const [selectedNote, setSelectedNote] = useState<any>(null);
 
     useEffect(() => {
-        fetchNotifications();
-        fetchUnreadCount();
+        let cancelled = false;
+
+        const load = async () => {
+            try {
+                const res = await api.get('/communication/notifications', { params: { targetId } });
+                if (!cancelled) setNotifications(res.data);
+            } catch (err) { console.error(err); }
+            finally { if (!cancelled) setLoading(false); }
+        };
+
+        const loadCount = async () => {
+            try {
+                const res = await api.get('/communication/notifications/unread-count', { params: { targetId } });
+                if (!cancelled) setUnreadCount(res.data.count);
+            } catch (err) { console.error(err); }
+        };
+
+        load();
+        loadCount();
+
+        return () => { cancelled = true; };
     }, [targetId]);
 
     const fetchNotifications = async () => {
@@ -33,14 +53,11 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
 
     const markAsRead = async (id: string) => {
         try {
-            console.log('[NotificationCenter] Marking as read:', id);
             await api.post(`/communication/notifications/${id}/read`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
             fetchUnreadCount();
         } catch (err: any) {
-            console.error('[NotificationCenter] Error marking as read:', err);
             if (err.response) {
-                console.error('[NotificationCenter] Error response data:', err.response.data);
                 toast.error(`ไม่สามารถทำเครื่องหมายว่าอ่านแล้ว: ${err.response.data.message || 'Error'}`);
             }
         }
@@ -78,7 +95,7 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
 
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden ${note.type === 'ALERT' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
                                 {note.imageUrl ? (
-                                    <img src={note.imageUrl.startsWith('http') ? note.imageUrl : `${API_URL}${note.imageUrl}`} className="w-full h-full object-cover" alt="" />
+                                    <img src={normalizeUrl(note.imageUrl)} className="w-full h-full object-cover" alt="" />
                                 ) : (
                                     note.type === 'ALERT' ? <AlertCircle size={22} /> : (note.isPinned ? <Pin size={22} className="fill-current" /> : <Info size={22} />)
                                 )}
@@ -114,13 +131,13 @@ export default function NotificationCenter({ targetId }: { targetId?: string }) 
                         {selectedNote.imageUrl ? (
                             <div className="w-full h-64 sm:h-80 relative bg-slate-50 border-b border-slate-100">
                                 <img
-                                    src={selectedNote.imageUrl.startsWith('http') ? selectedNote.imageUrl : `${API_URL}${selectedNote.imageUrl}`}
+                                    src={normalizeUrl(selectedNote.imageUrl)}
                                     alt=""
                                     className="relative w-full h-full object-contain z-10 p-2"
                                 />
                                 {/* Blurred Background Placeholder for premium feel */}
                                 <img
-                                    src={selectedNote.imageUrl.startsWith('http') ? selectedNote.imageUrl : `${API_URL}${selectedNote.imageUrl}`}
+                                    src={normalizeUrl(selectedNote.imageUrl)}
                                     alt=""
                                     className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-20"
                                 />

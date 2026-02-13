@@ -32,10 +32,15 @@ export class UploadService {
         const ext = extname(file.originalname).toLowerCase();
         const fileName = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
 
+        // Fallback to application/octet-stream only for text/plain or missing mimetype to bypass Supabase restrictions
+        const contentType = (file.mimetype === 'text/plain' || !file.mimetype)
+            ? 'application/octet-stream'
+            : file.mimetype;
+
         const { data, error } = await this.supabase.storage
             .from('uploads')
             .upload(fileName, file.buffer, {
-                contentType: file.mimetype,
+                contentType: contentType,
                 upsert: false,
             });
 

@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SchoolService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getSchoolInfo() {
     return this.prisma.school.findFirst();
@@ -27,55 +27,97 @@ export class SchoolService {
       const term = parseInt(match[2]);
 
       // 1. Ensure School exists (assuming one school for now)
-      let school = await this.prisma.school.findFirst();
-      if (!school) {
-        school = await this.prisma.school.create({
-          data: { name: 'โรงเรียนวัดบึงเหล็ก ในพระบรมราชานุเคราะห์' },
-        });
-      }
+      // Use upsert to handle potential race condition if multiple teachers trigger this
+      const school = await this.prisma.school.upsert({
+        where: { id: 'default-school-id' }, // Assuming we can use a stable ID or just use findFirst and create
+        update: {},
+        create: {
+          id: 'default-school-id',
+          name: 'โรงเรียนวัดบึงเหล็ก ในพระบรมราชานุเคราะห์'
+        },
+      });
 
       // 2. Ensure AcademicYear exists
+      // Use a unique constraint-like approach with findFirst/create or ideally a unique constraint on [year, schoolId]
+      // Since schema doesn't have it yet, we use a simple findFirst but wrap it in a try-catch for unique violations if we had the constraint.
+      // For now, let's stick to a safer findFirst/create pattern or better yet, update schema later.
+
       let acYear = await this.prisma.academicYear.findFirst({
         where: { year, schoolId: school.id },
       });
 
       if (!acYear) {
-        acYear = await this.prisma.academicYear.create({
-          data: {
-            year,
-            schoolId: school.id,
-            semesters: {
-              create: [{ term: 1 }, { term: 2 }],
+        try {
+          acYear = await this.prisma.academicYear.create({
+            data: {
+              year,
+              schoolId: school.id,
+              semesters: {
+                create: [{ term: 1 }, { term: 2 }],
+              },
             },
-          },
-        });
-        console.log(
-          `[SchoolService] Created default academic year and semesters for ${year}`,
-        );
+          });
+        } catch (e) {
+          // If creation fails due to race, find it again
+          acYear = await this.prisma.academicYear.findFirst({
+            where: { year, schoolId: school.id },
+          });
+        }
       }
 
       // 3. Find specific Semester
       let semester = await this.prisma.semester.findFirst({
-        where: { term, academicYearId: acYear.id },
+        where: { term, academicYearId: acYear?.id },
       });
 
-      if (!semester) {
-        semester = await this.prisma.semester.create({
-          data: { term, academicYearId: acYear.id },
-        });
+      if (!semester && acYear) {
+        try {
+          semester = await this.prisma.semester.create({
+            data: { term, academicYearId: acYear.id },
+          });
+        } catch (e) {
+          semester = await this.prisma.semester.findFirst({
+            where: { term, academicYearId: acYear.id },
+          });
+        }
       }
 
-      return semester.id;
+      return semester?.id || '';
     }
 
     // It's already a UUID or something else, return as is (and let Prisma validate if it exists)
     return semesterValue || '';
   }
 
-  async getClassrooms(rawSemesterId: string) {
-    const semesterId = await this.resolveSemesterId(rawSemesterId);
+  async getAllClassrooms() {
     return this.prisma.classroom.findMany({
-      where: { semesterId },
+      include: {
+        grade: true,
+        homeroomTeacher: {
+          include: { user: true },
+        },
+        students: {
+          include: { user: true },
+        },
+        _count: {
+          select: { students: true },
+        },
+      },
+      orderBy: [{ grade: { level: 'asc' } }, { roomNumber: 'asc' }],
+    });
+  }
+
+  async getClassrooms(rawSemesterId?: string) {
+    const where: any = {};
+    if (rawSemesterId && rawSemesterId !== 'undefined' && rawSemesterId.trim() !== '') {
+      const resolved = await this.resolveSemesterId(rawSemesterId);
+      if (resolved) {
+        where.semesterId = resolved;
+      }
+    }
+
+    return this.prisma.classroom.findMany({
+      where,
       include: {
         grade: true,
         homeroomTeacher: {
@@ -88,12 +130,16 @@ export class SchoolService {
             user: true,
           },
         },
+        _count: {
+          select: { students: true },
+        },
       },
+      orderBy: [{ grade: { level: 'asc' } }, { roomNumber: 'asc' }],
     });
   }
 
   async getTeacherClassrooms(userId: string) {
-    return this.prisma.classroom.findMany({
+    const classrooms = await this.prisma.classroom.findMany({
       where: {
         OR: [
           { homeroomTeacher: { userId } },
@@ -113,6 +159,52 @@ export class SchoolService {
           select: { students: true },
         },
       },
+    });
+
+    return classrooms.map((c) => ({
+      ...c,
+      isHomeroom: c.homeroomTeacher?.userId === userId,
+    }));
+  }
+
+  async getTeacherClassroomsCategorized(userId: string) {
+    const classrooms = await this.getTeacherClassrooms(userId);
+
+    const homeroom = classrooms.find((c) => c.isHomeroom) || null;
+    const taught = classrooms.filter((c) => !c.isHomeroom);
+
+    return {
+      homeroom,
+      taught,
+    };
+  }
+
+  async getStudentsByClassrooms(userId: string, classroomIds: string[]) {
+    // SECURITY CHECK: Ensure teacher teaches these classrooms or is an ADMIN
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role !== 'ADMIN' && user?.role !== 'TEACHER') {
+      const accessCount = await this.prisma.classroom.count({
+        where: {
+          id: { in: classroomIds },
+          OR: [
+            { homeroomTeacher: { userId } },
+            { subjects: { some: { teacher: { userId } } } },
+          ],
+        },
+      });
+
+      if (accessCount !== classroomIds.length) {
+        throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงบางห้องเรียนที่เลือก');
+      }
+    }
+
+    return this.prisma.student.findMany({
+      where: { classroomId: { in: classroomIds } },
+      include: {
+        user: true,
+        classroom: { include: { grade: true } },
+      },
+      orderBy: [{ classroomId: 'asc' }, { studentCode: 'asc' }],
     });
   }
 
@@ -174,6 +266,51 @@ export class SchoolService {
     });
   }
 
+  async getStudentMaterials(userId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true, classroomId: true },
+    });
+    if (!student) return [];
+
+    const materials = await this.prisma.learningMaterial.findMany({
+      where: {
+        OR: [
+          {
+            subject: {
+              classroomId: student.classroomId,
+            },
+          },
+          {
+            subject: {
+              students: {
+                some: {
+                  studentId: student.id,
+                },
+              },
+            },
+          },
+          {
+            subject: {
+              schedules: {
+                some: {
+                  classroomId: student.classroomId,
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        teacher: { include: { user: true } },
+        subject: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return materials;
+  }
+
   async createLearningMaterial(data: {
     title: string;
     description?: string;
@@ -196,5 +333,38 @@ export class SchoolService {
 
   async deleteLearningMaterial(id: string) {
     return this.prisma.learningMaterial.delete({ where: { id } });
+  }
+
+  async createLearningMaterialAsTeacher(userId: string, data: any) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { userId },
+      include: {
+        subjects: { where: { id: data.subjectId } },
+      },
+    });
+
+    if (!teacher) throw new ForbiddenException('ไม่พบข้อมูลโปรไฟล์ครู');
+    if (teacher.subjects.length === 0) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์เพิ่มสื่อการสอนในวิชานี้');
+    }
+
+    return this.createLearningMaterial({
+      ...data,
+      teacherId: teacher.id,
+    });
+  }
+
+  async deleteLearningMaterialAsTeacher(userId: string, materialId: string) {
+    const material = await this.prisma.learningMaterial.findUnique({
+      where: { id: materialId },
+      include: { teacher: true },
+    });
+
+    if (!material) throw new NotFoundException('ไม่พบสื่อการสอน');
+    if (material.teacher.userId !== userId) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์ลบสื่อการสอนของผู้อื่น');
+    }
+
+    return this.deleteLearningMaterial(materialId);
   }
 }

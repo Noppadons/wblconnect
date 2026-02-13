@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Users, GraduationCap, School, Activity, ArrowRight, Calendar, Clock, Bell } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
@@ -26,7 +27,9 @@ export default function AdminDashboardPage() {
                 setStats(statsRes.data);
                 setCharts(chartsRes.data);
             })
-            .catch(() => {})
+            .catch(() => {
+                toast.error('ไม่สามารถโหลดข้อมูลสถิติได้');
+            })
             .finally(() => setLoading(false));
     }, []);
 

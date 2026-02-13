@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Briefcase, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import ImageUpload from '@/components/Common/ImageUpload';
@@ -121,7 +122,7 @@ export default function AdminTeachersPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold overflow-hidden border border-blue-100">
                                                         {t.user?.avatarUrl ? (
-                                                            <img src={t.user.avatarUrl.startsWith('http') ? t.user.avatarUrl : `${API_URL}${t.user.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                                                            <img src={normalizeUrl(t.user.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             t.user?.firstName?.[0] || 'T'
                                                         )}

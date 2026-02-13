@@ -44,6 +44,7 @@ export default function AttendanceCheckPage() {
     const [user, setUser] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [showAllClassrooms, setShowAllClassrooms] = useState(false);
     const [remarkStudentId, setRemarkStudentId] = useState<string | null>(null);
     const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
     const savedSnapshotRef = useRef<string>("");
@@ -91,48 +92,58 @@ export default function AttendanceCheckPage() {
 
         const fetchClassrooms = async () => {
             try {
+                setLoading(true);
                 let rooms: any[] = [];
-                // If TEACHER, use a more direct endpoint that doesn't rely on semester structure
-                if (parsedUser?.role === 'TEACHER') {
-                    const res = await api.get('/school/my-classrooms');
-                    rooms = res.data || [];
-                } else {
-                    // Fallback for Admin or others
-                    const yearsRes = await api.get('/school/academic-years');
-                    if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                        const semesters = yearsRes.data[0].semesters;
-                        const month = new Date().getMonth();
-                        const isTerm2Time = month >= 10 || month <= 2;
-                        let semesterId = semesters[0].id;
+                const yearsRes = await api.get('/school/academic-years');
+                let currentSemesterId = '';
 
-                        if (isTerm2Time) {
-                            const term2 = semesters.find((s: any) => s.term === 2);
-                            if (term2) semesterId = term2.id;
-                        }
-                        const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
-                        rooms = classroomsRes.data || [];
+                if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
+                    const semesters = yearsRes.data[0].semesters;
+                    const month = new Date().getMonth();
+                    const isTerm2Time = month >= 10 || month <= 2;
+                    currentSemesterId = semesters[0].id;
+                    if (isTerm2Time) {
+                        const term2 = semesters.find((s: any) => s.term === 2);
+                        if (term2) currentSemesterId = term2.id;
                     }
                 }
 
+                if (showAllClassrooms) {
+                    // ดึงทุกห้องเรียนทั้งหมด (ไม่ filter semester)
+                    const res = await api.get('/school/all-classrooms');
+                    rooms = res.data || [];
+                } else if (parsedUser?.role === 'TEACHER') {
+                    const res = await api.get('/school/my-classrooms');
+                    rooms = res.data || [];
+                } else if (currentSemesterId) {
+                    const res = await api.get(`/school/classrooms?semesterId=${currentSemesterId}`);
+                    rooms = res.data || [];
+                }
+
                 setClassrooms(rooms);
+                // Reset selection when switching modes or if current selection is not in new list
                 if (rooms.length > 0) {
-                    setSelectedClassroomId(rooms[0].id);
+                    const currentExists = rooms.find((r: any) => r.id === selectedClassroomId);
+                    if (!currentExists) {
+                        setSelectedClassroomId(rooms[0].id);
+                    }
                 }
             } catch (err: any) {
                 console.error('[Attendance] Error loading classrooms:', err?.message);
                 toast.error('ไม่สามารถโหลดข้อมูลห้องเรียนได้');
+            } finally {
+                setLoading(false);
             }
-            finally { setLoading(false); }
         };
         fetchClassrooms();
-    }, []);
+    }, [showAllClassrooms]);
 
     useEffect(() => {
         const classroom = classrooms.find(c => c.id === selectedClassroomId);
         if (classroom) {
             loadStudentsForClassroom(classroom, selectedPeriod, selectedDate);
         }
-    }, [selectedClassroomId, selectedPeriod, selectedDate, classrooms, loadStudentsForClassroom]);
+    }, [selectedClassroomId, selectedPeriod, selectedDate, loadStudentsForClassroom]);
 
     // Track unsaved changes
     useEffect(() => {
@@ -264,15 +275,23 @@ export default function AttendanceCheckPage() {
 
                     {/* Toolbar Row 1: Classroom + Period */}
                     <div className="flex flex-col md:flex-row gap-3 mb-3">
-                        <div className="relative w-full md:w-56">
-                            <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
-                                {classrooms.map(c => (
-                                    <option key={c.id} value={c.id}>
-                                        ชั้น {c.grade?.level}/{c.roomNumber} ({c._count?.students ?? c.students?.length ?? 0} คน)
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                        <div className="flex items-center gap-2">
+                            <div className="relative w-full md:w-56">
+                                <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
+                                    {classrooms.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            ชั้น {c.grade?.level}/{c.roomNumber} ({c._count?.students ?? c.students?.length ?? 0} คน)
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                            </div>
+                            <button
+                                onClick={() => setShowAllClassrooms(!showAllClassrooms)}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-white text-text-secondary border-border hover:bg-slate-50'}`}
+                            >
+                                {showAllClassrooms ? 'แสดงห้องฉัน' : 'ดูทุกห้อง'}
+                            </button>
                         </div>
                         <div className="relative w-full md:w-44">
                             <select value={selectedPeriod} onChange={(e) => handlePeriodChange(Number(e.target.value))} className="select-field pr-10">

@@ -9,9 +9,14 @@ import {
   BulkCheckAttendanceDto,
 } from './dto/check-attendance.dto';
 
+import { PrismaService } from '../prisma/prisma.service';
+
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) { }
+  constructor(
+    private readonly attendanceService: AttendanceService,
+    private readonly prisma: PrismaService,
+  ) { }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.TEACHER, Role.ADMIN)
@@ -24,11 +29,7 @@ export class AttendanceController {
   @Roles(Role.TEACHER, Role.ADMIN)
   @Post('bulk-check')
   async bulkCheckAttendance(@Req() req: any, @Body() data: BulkCheckAttendanceDto) {
-    const results: any[] = [];
-    for (const record of data.records) {
-      results.push(await this.attendanceService.checkAttendance(req.user.id, record));
-    }
-    return { count: results.length, message: 'Attendance saved successfully' };
+    return this.attendanceService.bulkCheckAttendance(req.user.id, data);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,6 +48,62 @@ export class AttendanceController {
       req.user.id,
       classroomId,
       date,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @Get('multi-classrooms')
+  async getMultiClassroomAttendance(
+    @Req() req: any,
+    @Query('classroomIds') classroomIds: string,
+    @Query('date') dateString: string,
+  ) {
+    const ids = classroomIds ? classroomIds.split(',') : [];
+    let date = dateString ? new Date(dateString) : new Date();
+    if (isNaN(date.getTime())) {
+      date = new Date();
+    }
+    return this.attendanceService.getMultiClassroomAttendance(
+      req.user.id,
+      ids,
+      date,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @Get('summary')
+  async getSemesterSummary(
+    @Query('classroomId') classroomId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.attendanceService.getSemesterSummary(classroomId, startDate, endDate);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
+  @Get('student-report')
+  async getStudentReport(
+    @Req() req: any,
+    @Query('studentId') studentId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    // If student, they can only see their own
+    let targetStudentId = studentId;
+    if (req.user.role === Role.STUDENT) {
+      const student = await this.prisma.student.findUnique({
+        where: { userId: req.user.id },
+      });
+      targetStudentId = student?.id || '';
+    }
+
+    return this.attendanceService.getStudentAttendanceReport(
+      targetStudentId,
+      startDate,
+      endDate,
     );
   }
 }

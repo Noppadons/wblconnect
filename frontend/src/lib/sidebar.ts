@@ -43,6 +43,7 @@ export const TEACHER_SIDEBAR: SidebarItem[] = [
     { label: 'นักเรียน', href: '/teacher/students', icon: Users },
     { label: 'พฤติกรรม', href: '/teacher/behavior', icon: Smile },
     { label: 'เอกสารการสอน', href: '/teacher/materials', icon: BookOpen },
+    { label: 'สรุปผลเข้าเรียน', href: '/teacher/reports/attendance', icon: FileBarChart },
 ];
 
 export const STUDENT_SIDEBAR: SidebarItem[] = [

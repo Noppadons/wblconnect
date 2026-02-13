@@ -40,7 +40,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new NoCacheInterceptor());
 
   app.enableCors({
-    origin: true,
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   });
 

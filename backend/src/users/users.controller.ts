@@ -9,7 +9,6 @@ import {
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { BadRequestException } from '@nestjs/common';
 
 @Controller('users')
 export class UsersController {
@@ -30,11 +29,7 @@ export class UsersController {
   @Patch('change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(@Req() req: any, @Body() data: ChangePasswordDto) {
-    try {
-      await this.usersService.changePassword(req.user.id, data);
-      return { message: 'เปลี่ยนรหัสผ่านสำเร็จ' };
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+    await this.usersService.changePassword(req.user.id, data);
+    return { message: 'เปลี่ยนรหัสผ่านสำเร็จ' };
   }
 }

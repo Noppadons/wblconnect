@@ -1,4 +1,5 @@
-import { IsString, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsDateString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateAssignmentDto {
   @IsString()
@@ -33,6 +34,10 @@ export class SubmitAssignmentDto {
 
   @IsOptional()
   @IsString()
+  studentId?: string;
+
+  @IsOptional()
+  @IsString()
   content?: string;
 
   @IsOptional()
@@ -59,4 +64,11 @@ export class BulkGradeItemDto {
   @IsOptional()
   @IsString()
   feedback?: string;
+}
+
+export class BulkGradeDto {
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => BulkGradeItemDto)
+  grades?: BulkGradeItemDto[];
 }

@@ -14,6 +14,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { SidebarItem } from '@/lib/sidebar';
 import ChangePasswordModal from '../Auth/ChangePasswordModal';
 import { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -54,11 +55,16 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
     }, [pathname]);
 
     const handleLogout = async () => {
+        try {
+            await fetch(`${API_URL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (err) {
+            console.error('Logout request failed:', err);
+        }
         localStorage.clear();
         sessionStorage.clear();
-        document.cookie.split(";").forEach((c) => {
-            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        });
         router.replace('/login');
     };
 
@@ -157,7 +163,7 @@ export default function AppShell({ children, role, user, sidebarItems, pageTitle
                             <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden border border-border">
                                 {user?.avatarUrl ? (
                                     <img
-                                        src={user.avatarUrl.startsWith('http') ? user.avatarUrl : `${API_URL}${user.avatarUrl}`}
+                                        src={normalizeUrl(user.avatarUrl)}
                                         className="w-full h-full object-cover"
                                         alt=""
                                     />

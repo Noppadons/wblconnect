@@ -4,10 +4,9 @@ export class CreateStudentDto {
   @IsEmail()
   email: string;
 
-  @IsOptional()
   @IsString()
-  @MinLength(4)
-  password?: string;
+  @MinLength(6, { message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' })
+  password: string;
 
   @IsString()
   firstName: string;
@@ -65,10 +64,9 @@ export class CreateTeacherDto {
   @IsEmail()
   email: string;
 
-  @IsOptional()
   @IsString()
-  @MinLength(4)
-  password?: string;
+  @MinLength(6, { message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' })
+  password: string;
 
   @IsString()
   firstName: string;

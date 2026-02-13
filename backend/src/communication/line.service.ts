@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
@@ -34,7 +34,6 @@ export class LineService {
           },
         },
       );
-      console.log(`[LineService] Broadcast message sent: ${message}`);
     } catch (err: any) {
       this.handleLineError(err, 'Broadcast');
     }
@@ -60,7 +59,7 @@ export class LineService {
 
   private async sendMessagingApiMessage(to: string, message: string) {
     if (!this.CHANNEL_ACCESS_TOKEN) {
-      throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN for Messaging API');
+      throw new InternalServerErrorException('Missing LINE_CHANNEL_ACCESS_TOKEN for Messaging API');
     }
     try {
       await axios.post(
@@ -76,7 +75,6 @@ export class LineService {
           },
         },
       );
-      console.log(`[LineService] Messaging API: Message sent to ${to}`);
     } catch (err: any) {
       this.handleLineError(err, 'Messaging API');
     }
@@ -93,11 +91,10 @@ export class LineService {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log(`[LineService] LINE Notify: Message sent successfully`);
     } catch (err: any) {
       const errorMsg = JSON.stringify(err.response?.data) || err.message;
       console.error('LINE Notify Error:', errorMsg);
-      throw new Error(`LINE Notify Error: ${errorMsg}`);
+      throw new InternalServerErrorException(`LINE Notify Error: ${errorMsg}`);
     }
   }
 
@@ -131,6 +128,6 @@ export class LineService {
     }
 
     console.error(`Line ${context} Error:`, errorMsg);
-    throw new Error(`Line ${context} Error: ${errorMsg}`);
+    throw new InternalServerErrorException(`Line ${context} Error: ${errorMsg}`);
   }
 }

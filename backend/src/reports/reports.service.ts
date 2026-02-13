@@ -130,9 +130,9 @@ export class ReportsService {
       },
     });
 
-    if (!student) throw new Error('Student not found');
+    if (!student) throw new NotFoundException('Student not found');
 
-    const gpa = await this.assessmentService.calculateGPA(studentId);
+    const gpa = student.gpa || 0;
 
     const doc = new PDFDocument();
 

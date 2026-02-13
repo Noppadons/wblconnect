@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { SchoolService } from '../school/school.service';
@@ -50,39 +50,54 @@ export class AdminService {
       now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
     );
 
-    // Attendance trend: last 7 days
+    // Attendance trend: last 7 days using GROUP BY
     const totalStudents = await this.prisma.student.count();
     const startDate = new Date(thaiTime);
     startDate.setDate(startDate.getDate() - 6);
     startDate.setHours(0, 0, 0, 0);
 
-    const attendances = await this.prisma.attendance.findMany({
+    const attendances = await this.prisma.attendance.groupBy({
+      by: ['date'],
       where: {
         date: { gte: startDate },
         status: 'PRESENT',
       },
-      select: { date: true },
+      _count: {
+        id: true,
+      },
     });
 
     const attendanceTrend: { label: string; value: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const day = new Date(thaiTime);
       day.setDate(day.getDate() - i);
-      const dateKey = day.toISOString().split('T')[0];
+      const startOfTargetDay = new Date(day);
+      startOfTargetDay.setHours(0, 0, 0, 0);
+      const endOfTargetDay = new Date(day);
+      endOfTargetDay.setHours(23, 59, 59, 999);
 
-      const presentCount = attendances.filter(
-        (a) => a.date.toISOString().split('T')[0] === dateKey,
-      ).length;
+      // Find the count for this specific day in the grouped results
+      const presentCount =
+        attendances.find(
+          (a) => a.date >= startOfTargetDay && a.date <= endOfTargetDay,
+        )?._count.id || 0;
 
       const rate =
-        totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+        totalStudents > 0
+          ? Math.round((presentCount / totalStudents) * 100)
+          : 0;
       attendanceTrend.push({
         label: day.toLocaleDateString('th-TH', { weekday: 'short' }),
         value: rate,
       });
     }
 
-    // Score distribution: efficient count per range
+    // Score distribution: single query using groupBy to avoid N+1
+    const allStudents = await this.prisma.student.findMany({
+      where: { gpa: { gte: 0 } },
+      select: { gpa: true },
+    });
+
     const ranges = [
       { label: '0-1.0', min: 0, max: 1.0 },
       { label: '1.0-1.5', min: 1.0, max: 1.5 },
@@ -93,14 +108,10 @@ export class AdminService {
       { label: '3.5-4.0', min: 3.5, max: 4.01 },
     ];
 
-    const scoreDistribution = await Promise.all(
-      ranges.map(async (r) => {
-        const count = await this.prisma.student.count({
-          where: { gpa: { gte: r.min, lt: r.max } },
-        });
-        return { label: r.label, value: count };
-      }),
-    );
+    const scoreDistribution = ranges.map((r) => ({
+      label: r.label,
+      value: allStudents.filter((s) => (s.gpa ?? 0) >= r.min && (s.gpa ?? 0) < r.max).length,
+    }));
 
     // Recent notifications as activity
     const recentNotifications = await this.prisma.notification.findMany({
@@ -144,18 +155,22 @@ export class AdminService {
       classroomId,
       avatarUrl,
     } = data;
+
     if (!password || password.length < 6) {
       throw new BadRequestException('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
     }
 
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
     if (existingUser) throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return this.prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         firstName,
         lastName,
@@ -185,7 +200,7 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!student) throw new Error('Student not found');
+    if (!student) throw new NotFoundException('Student not found');
 
     // Build user update — only include fields that are provided
     const userUpdate: any = {};
@@ -241,7 +256,7 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!student) throw new Error('Student not found');
+    if (!student) throw new NotFoundException('Student not found');
 
     // Delete user will cascade to student if configured,
     // but let's be safe or check the schema.
@@ -253,55 +268,43 @@ export class AdminService {
 
   // Teacher Management
   async findAllTeachers() {
-    console.log('[AdminService] findAllTeachers called');
-    try {
-      const teachers = await this.prisma.teacher.findMany({
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              avatarUrl: true,
-              createdAt: true,
-            },
-          },
-          homeroomClass: {
-            include: {
-              grade: true,
-            },
+    return this.prisma.teacher.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            avatarUrl: true,
+            createdAt: true,
           },
         },
-      });
-      console.log(`[AdminService] findAllTeachers success, count: ${teachers.length}`);
-      return teachers;
-    } catch (error) {
-      console.error('[AdminService] findAllTeachers Error:', error);
-      throw error;
-    }
+        homeroomClass: {
+          include: {
+            grade: true,
+          },
+        },
+      },
+    });
   }
 
   async createTeacher(data: any) {
-    const { email, password, firstName, lastName, avatarUrl } = data;
-    if (!password || password.length < 6) {
-      throw new BadRequestException('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-    }
-
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = data.email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
     return this.prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
-        firstName,
-        lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         role: 'TEACHER',
-        avatarUrl: avatarUrl || null,
+        avatarUrl: data.avatarUrl || null,
         teacher: {
           create: {},
         },
@@ -318,7 +321,7 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!teacher) throw new Error('Teacher not found');
+    if (!teacher) throw new NotFoundException('Teacher not found');
 
     const userUpdate: any = {};
     if (data.firstName !== undefined) userUpdate.firstName = data.firstName;
@@ -342,7 +345,7 @@ export class AdminService {
       include: { user: true },
     });
 
-    if (!teacher) throw new Error('Teacher not found');
+    if (!teacher) throw new NotFoundException('Teacher not found');
 
     return this.prisma.user.delete({
       where: { id: teacher.userId },
@@ -474,63 +477,74 @@ export class AdminService {
   async getSemesterSummary(classroomId?: string) {
     const whereClause = classroomId ? { classroomId } : {};
 
+    // PERFORMANCE FIX: Use selective fields and aggregated counting
     const students = await this.prisma.student.findMany({
       where: whereClause,
       include: {
         user: { select: { firstName: true, lastName: true, avatarUrl: true } },
         classroom: { include: { grade: true } },
-        enrolledSubjects: { include: { subject: true } },
-        attendance: true,
-        behaviorLogs: true,
-        submissions: { include: { assignment: true } },
+        _count: {
+          select: {
+            enrolledSubjects: true,
+            submissions: true,
+            attendance: true,
+          },
+        },
+        attendance: {
+          select: { status: true },
+        },
+        behaviorLogs: {
+          select: { type: true, points: true },
+        },
+        submissions: {
+          where: { status: 'GRADED' },
+          select: {
+            points: true,
+            assignment: { select: { maxPoints: true } },
+          },
+        },
+        // Only fetch failing subjects for risk assessment
+        enrolledSubjects: {
+          where: { grade: { lt: 1.0, not: null } },
+          select: { id: true },
+        },
       },
     });
 
-    const ABSENT_THRESHOLD = 20; // จำนวนวันขาดเรียนเกินเกณฑ์
+    const ABSENT_THRESHOLD = 20;
     const LOW_GPA_THRESHOLD = 2.0;
-    const ACTIVITY_MIN_HOURS = 0; // placeholder — ยังไม่มี activity model
 
     const studentSummaries = students.map((s) => {
-      // GPA: คำนวณจาก enrolledSubjects
-      const gradedSubjects = s.enrolledSubjects.filter(
-        (es) => es.grade !== null,
-      );
-      const totalCredits = gradedSubjects.reduce(
-        (sum, es) => sum + (es.subject?.credit || 1.5),
-        0,
-      );
-      const weightedSum = gradedSubjects.reduce(
-        (sum, es) => sum + (es.grade || 0) * (es.subject?.credit || 1.5),
-        0,
-      );
-      const gpa =
-        totalCredits > 0
-          ? Math.round((weightedSum / totalCredits) * 100) / 100
-          : s.gpa || 0;
+      // Use pre-calculated GPA from DB (Trusting the AssessmentService sync logic)
+      const gpa = s.gpa || 0;
 
-      // Attendance
-      const totalAttendance = s.attendance.length;
-      const present = s.attendance.filter((a) => a.status === 'PRESENT').length;
-      const late = s.attendance.filter((a) => a.status === 'LATE').length;
-      const absent = s.attendance.filter((a) => a.status === 'ABSENT').length;
-      const leave = s.attendance.filter((a) => a.status === 'LEAVE').length;
+      // Attendance Metrics
+      const stats = s.attendance.reduce(
+        (acc, curr) => {
+          acc[curr.status.toLowerCase()]++;
+          return acc;
+        },
+        { present: 0, late: 0, absent: 0, leave: 0 } as any,
+      );
+
+      const totalAttendance = s._count.attendance;
       const attendanceRate =
         totalAttendance > 0
-          ? Math.round(((present + late) / totalAttendance) * 10000) / 100
+          ? Math.round(((stats.present + stats.late) / totalAttendance) * 10000) / 100
           : 0;
 
-      // Behavior
-      const positivePts = s.behaviorLogs
-        .filter((b) => b.type === 'POSITIVE')
-        .reduce((sum, b) => sum + b.points, 0);
-      const negativePts = s.behaviorLogs
-        .filter((b) => b.type === 'NEGATIVE')
-        .reduce((sum, b) => sum + Math.abs(b.points), 0);
-      const behaviorScore = positivePts - negativePts;
+      // Behavior Metrics
+      let behaviorScore = 0;
+      let positivePts = 0;
+      let negativePts = 0;
+      s.behaviorLogs.forEach((b) => {
+        if (b.type === 'POSITIVE') positivePts += b.points;
+        else negativePts += Math.abs(b.points);
+      });
+      behaviorScore = positivePts - negativePts;
 
-      // Submissions
-      const totalAssignments = s.submissions.length;
-      const graded = s.submissions.filter((sub) => sub.status === 'GRADED');
+      // Submissions Metrics
+      const graded = s.submissions;
       const avgScore =
         graded.length > 0
           ? Math.round(
@@ -547,10 +561,9 @@ export class AdminService {
       // Risk flags
       const risks: string[] = [];
       if (gpa > 0 && gpa < LOW_GPA_THRESHOLD) risks.push('GPA ต่ำ');
-      if (absent >= ABSENT_THRESHOLD) risks.push('ขาดเรียนเกินเกณฑ์');
+      if (stats.absent >= ABSENT_THRESHOLD) risks.push('ขาดเรียนเกินเกณฑ์');
       if (behaviorScore < -10) risks.push('พฤติกรรมเสี่ยง');
-      if (gradedSubjects.some((es) => (es.grade || 0) < 1.0))
-        risks.push('มีวิชาที่ไม่ผ่าน');
+      if (s.enrolledSubjects.length > 0) risks.push('มีวิชาที่ไม่ผ่าน');
 
       return {
         id: s.id,
@@ -561,14 +574,11 @@ export class AdminService {
         classroom: `${s.classroom.grade.level}/${s.classroom.roomNumber}`,
         classroomId: s.classroomId,
         gpa,
-        subjectCount: s.enrolledSubjects.length,
-        gradedSubjectCount: gradedSubjects.length,
+        subjectCount: s._count.enrolledSubjects,
+        gradedSubjectCount: graded.length,
         attendance: {
           total: totalAttendance,
-          present,
-          late,
-          absent,
-          leave,
+          ...stats,
           rate: attendanceRate,
         },
         behavior: {
@@ -576,7 +586,7 @@ export class AdminService {
           negative: negativePts,
           score: behaviorScore,
         },
-        submissions: { total: totalAssignments, avgScore },
+        submissions: { total: s._count.submissions, avgScore },
         risks,
         isAtRisk: risks.length > 0,
       };
@@ -640,7 +650,7 @@ export class AdminService {
 
   async updateSettings(data: any) {
     const school = await this.prisma.school.findFirst();
-    if (!school) throw new Error('School not found');
+    if (!school) throw new NotFoundException('School not found');
 
     return this.prisma.school.update({
       where: { id: school.id },

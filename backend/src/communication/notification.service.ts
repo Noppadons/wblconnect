@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineService } from './line.service';
 
@@ -75,35 +75,25 @@ export class NotificationService {
   }
 
   async markAsRead(notificationId: string, userId: string) {
-    console.log(
-      `[NotificationService] Attempting to mark as read: note=${notificationId}, user=${userId}`,
-    );
     if (!notificationId || !userId) {
-      console.error('[NotificationService] Missing ID in markAsRead');
-      throw new Error('NotificationId and UserId are required');
+      throw new BadRequestException('NotificationId and UserId are required');
     }
-    try {
-      const res = await this.prisma.userNotification.upsert({
-        where: {
-          userId_notificationId: { userId, notificationId },
-        },
-        update: {
-          isRead: true,
-          readAt: new Date(),
-        },
-        create: {
-          userId,
-          notificationId,
-          isRead: true,
-          readAt: new Date(),
-        },
-      });
-      console.log('[NotificationService] Successfully marked as read');
-      return res;
-    } catch (err) {
-      console.error('[NotificationService] Prisma error in markAsRead:', err);
-      throw err;
-    }
+
+    return this.prisma.userNotification.upsert({
+      where: {
+        userId_notificationId: { userId, notificationId },
+      },
+      update: {
+        isRead: true,
+        readAt: new Date(),
+      },
+      create: {
+        userId,
+        notificationId,
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
   }
 
   async getUnreadCount(userId: string, targetId?: string | null) {

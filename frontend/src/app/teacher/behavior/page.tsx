@@ -33,6 +33,7 @@ export default function BehaviorPage() {
     const [showCustomModal, setShowCustomModal] = useState(false);
     const [customForm, setCustomForm] = useState({ content: '', points: 0, type: 'POSITIVE' as string });
     const [activeView, setActiveView] = useState<'record' | 'history'>('record');
+    const [showAllClassrooms, setShowAllClassrooms] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -40,50 +41,40 @@ export default function BehaviorPage() {
 
         const fetchClassrooms = async () => {
             try {
-                // ดึงห้องที่ปรึกษา/ที่สอน
-                let myRooms: any[] = [];
-                try {
-                    const myRes = await api.get('/school/my-classrooms');
-                    myRooms = myRes.data || [];
-                } catch { }
-
-                const yearsRes = await api.get('/school/academic-years');
+                setLoading(true);
                 let rooms: any[] = [];
-                if (yearsRes.data?.length && yearsRes.data[0].semesters?.length) {
-                    const semesters = yearsRes.data[0].semesters;
-                    // Smart pick: if Feb (1), pick Term 2 if available
-                    const month = new Date().getMonth(); // 0-11
-                    const isTerm2Time = month >= 10 || month <= 2; // Nov(10), Dec(11), Jan(0), Feb(1), Mar(2)
-                    let semesterId = semesters[0].id;
 
-                    if (isTerm2Time) {
-                        const term2 = semesters.find((s: any) => s.term === 2);
-                        if (term2) semesterId = term2.id;
+                if (showAllClassrooms) {
+                    const res = await api.get('/school/all-classrooms');
+                    rooms = res.data || [];
+                } else {
+                    const res = await api.get('/school/my-classrooms');
+                    rooms = res.data || [];
+                }
+
+                setClassrooms(rooms);
+                if (rooms.length > 0) {
+                    const currentExists = rooms.find((r: any) => r.id === selectedClassroomId);
+                    if (!currentExists) {
+                        setSelectedClassroomId(rooms[0].id);
+                        setStudents(rooms[0].students || []);
                     }
-
-                    const classroomsRes = await api.get(`/school/classrooms?semesterId=${semesterId}`);
-                    rooms = classroomsRes.data || [];
                 }
-
-                const finalRooms = rooms.length > 0 ? rooms : myRooms;
-                setClassrooms(finalRooms);
-                if (finalRooms.length > 0) {
-                    setSelectedClassroomId(finalRooms[0].id);
-                    setStudents(finalRooms[0].students || []);
-                }
-            } catch (err) { console.error(err); }
-            finally { setLoading(false); }
+            } catch (err: any) {
+                toast.error('ไม่สามารถโหลดข้อมูลห้องเรียนได้');
+            } finally { setLoading(false); }
         };
         fetchClassrooms();
-    }, []);
+    }, [showAllClassrooms]);
 
     useEffect(() => {
         if (selectedClassroomId) fetchLogs();
     }, [selectedClassroomId]);
 
     const fetchLogs = async () => {
+        if (!selectedClassroomId) return;
         try {
-            const res = await api.get(`/teacher/behavior-logs/${selectedClassroomId}?limit=50`);
+            const res = await api.get(`/teacher/behavior-logs?classroomId=${selectedClassroomId}&limit=50`);
             setLogs(res.data);
         } catch { }
     };
@@ -159,13 +150,21 @@ export default function BehaviorPage() {
                 <>
                     {/* Toolbar */}
                     <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                        <div className="relative w-full sm:w-56">
-                            <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
-                                {classrooms.map(c => (
-                                    <option key={c.id} value={c.id}>ชั้น {c.grade?.level}/{c.roomNumber} ({c.students?.length || 0} คน)</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                        <div className="flex items-center gap-2">
+                            <div className="relative w-full sm:w-56">
+                                <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
+                                    {classrooms.map(c => (
+                                        <option key={c.id} value={c.id}>ชั้น {c.grade?.level}/{c.roomNumber} ({c._count?.students ?? c.students?.length ?? 0} คน)</option>
+                                    ))}
+                                </select>
+                                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                            </div>
+                            <button
+                                onClick={() => setShowAllClassrooms(!showAllClassrooms)}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${showAllClassrooms ? 'bg-primary text-white border-primary' : 'bg-white text-text-secondary border-border hover:bg-slate-50'}`}
+                            >
+                                {showAllClassrooms ? 'แสดงห้องฉัน' : 'ดูทุกห้อง'}
+                            </button>
                         </div>
                         <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
                             <button onClick={() => setActiveView('record')}

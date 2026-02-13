@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, FileText, Download, Filter, Search, ChevronDown } from 'lucide-react';
 import AppShell from '@/components/Layout/AppShell';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import { STUDENT_SIDEBAR } from '@/lib/sidebar';
 
@@ -22,37 +23,32 @@ export default function StudentMaterialsPage() {
 
     const fetchMyData = async () => {
         try {
-            // Get current student profile
-            const profileRes = await api.get('/auth/profile');
-            const student = profileRes.data.student;
+            // Fetch student profile for classroom information
+            const profileRes = await api.get('/students/my-profile');
+            const student = profileRes.data;
             if (!student || !student.classroomId) {
                 setLoading(false);
                 return;
             }
 
-            // Fetch subjects for this student's classroom
+            // Fetch subjects for filter
             const subjectsRes = await api.get('/school/subjects');
             const mySubjects = subjectsRes.data.filter((s: any) => s.classroomId === student.classroomId);
             setSubjects(mySubjects);
 
-            // Fetch materials for these subjects
-            const allMaterials: any[] = [];
-            for (const sub of mySubjects) {
-                try {
-                    const matRes = await api.get(`/school/materials?subjectId=${sub.id}`);
-                    allMaterials.push(...matRes.data.map((m: any) => ({
-                        ...m,
-                        subjectName: sub.name,
-                        subjectCode: sub.code
-                    })));
-                } catch (err) {
-                    console.error(`Error fetching materials for subject ${sub.id}:`, err);
-                }
-            }
-            setMaterials(allMaterials);
-        } catch (err) {
-            console.error(err);
-            toast.error('ไม่สามารถดึงข้อมูลเอกสารการเรียนได้');
+            // Fetch all materials at once
+            const matRes = await api.get('/school/student-materials');
+            const processedMaterials = matRes.data.map((m: any) => ({
+                ...m,
+                subjectName: m.subject?.name,
+                subjectCode: m.subject?.code
+            }));
+
+            setMaterials(processedMaterials);
+        } catch (err: any) {
+            console.error('Fetch Materials Error:', err);
+            const msg = err.response?.data?.message || err.message || 'ไม่ทราบสาเหตุ';
+            toast.error(`ไม่สามารถดึงข้อมูลเอกสารการเรียนได้: ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -105,7 +101,7 @@ export default function StudentMaterialsPage() {
 
                                     <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
                                         <span className="text-[10px] font-bold text-primary truncate max-w-[120px]">{m.subjectCode || 'ทั่วไป'}</span>
-                                        <a href={`${API_URL}${m.fileUrl}`} target="_blank" rel="noreferrer"
+                                        <a href={normalizeUrl(m.fileUrl, true)} target="_blank" rel="noreferrer" download={m.title}
                                             className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
                                             <Download size={14} /> ดาวน์โหลด
                                         </a>

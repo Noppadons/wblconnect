@@ -10,6 +10,7 @@ import {
   Headers,
   RawBody,
   Req,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { LineService } from './line.service';
@@ -63,18 +64,7 @@ export class CommunicationController {
   @Post('notifications/:id/read')
   @UseGuards(JwtAuthGuard)
   async markAsRead(@Req() req: any, @Param('id') id: string) {
-    console.log('[CommunicationController] markAsRead hit:', {
-      id,
-      userId: req.user.id,
-    });
-    try {
-      const result = await this.notificationService.markAsRead(id, req.user.id);
-      console.log('[CommunicationController] markAsRead success');
-      return result;
-    } catch (error) {
-      console.error('[CommunicationController] markAsRead error:', error);
-      throw error;
-    }
+    return this.notificationService.markAsRead(id, req.user.id);
   }
 
   @Roles(Role.ADMIN)
@@ -102,7 +92,7 @@ export class CommunicationController {
       await this.lineService.broadcastMessage(msg);
       return { success: true, message: 'Broadcast sent successfully' };
     } catch (error: any) {
-      throw new Error(error.message || 'Line Broadcast API Error');
+      throw new InternalServerErrorException(error.message || 'Line Broadcast API Error');
     }
   }
 
@@ -119,7 +109,7 @@ export class CommunicationController {
       );
       return { success: true };
     } catch (error: any) {
-      throw new Error(error.message || 'Line API Error');
+      throw new InternalServerErrorException(error.message || 'Line API Error');
     }
   }
 
@@ -142,20 +132,7 @@ export class CommunicationController {
       return { success: false, message: 'Invalid signature' };
     }
 
-    const events = body.events || [];
-    for (const event of events) {
-      console.log('[Webhook] Received event:', JSON.stringify(event, null, 2));
-
-      // Example: Log User ID / Group ID for easier setup
-      const source = event.source || {};
-      if (source.type === 'user')
-        console.log(`[Webhook] User ID: ${source.userId}`);
-      if (source.type === 'group')
-        console.log(`[Webhook] Group ID: ${source.groupId}`);
-      if (source.type === 'room')
-        console.log(`[Webhook] Room ID: ${source.roomId}`);
-    }
-
+    // Process webhook events (extend as needed)
     return { success: true };
   }
 }

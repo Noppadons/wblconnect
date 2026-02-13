@@ -5,6 +5,7 @@ import { Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 
 interface ImageUploadProps {
     value?: string;
@@ -91,7 +92,7 @@ export default function ImageUpload({
 
                 {preview ? (
                     <div className="absolute inset-0 w-full h-full">
-                        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={normalizeUrl(preview)} alt="Preview" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <p className="text-white text-sm font-medium">เปลี่ยนรูปภาพ</p>
                         </div>

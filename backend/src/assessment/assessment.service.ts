@@ -5,7 +5,20 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AssessmentService {
   constructor(private prisma: PrismaService) { }
 
-  async createAssignment(data: any) {
+  async createAssignment(userId: string, data: any) {
+    // SECURITY CHECK: Ensure the teacher owns this subject
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: data.subjectId },
+      include: { teacher: true },
+    });
+
+    if (!subject) throw new NotFoundException('ไม่พบวิชานี้');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role !== 'ADMIN' && subject.teacher.userId !== userId) {
+      throw new ForbiddenException('คุณไม่มีสิทธิ์สร้างงานในวิชานี้');
+    }
+
     return this.prisma.assignment.create({
       data: {
         title: data.title,
@@ -154,7 +167,7 @@ export class AssessmentService {
       },
     });
 
-    if (!assignment) throw new Error('Assignment not found');
+    if (!assignment) throw new NotFoundException('Assignment not found');
 
     // Format for easy consumption by the frontend gradebook table
     return {
@@ -240,20 +253,47 @@ export class AssessmentService {
     subjectId: string,
     grade: number,
   ) {
-    const result = await this.prisma.studentSubject.update({
-      where: {
-        studentId_subjectId: {
-          studentId,
-          subjectId,
-        },
-      },
-      data: { grade },
-    });
-
     // **Optimization**: Auto-recalculate GPA to keep data consistent
-    await this.calculateGPA(studentId);
+    // Use transaction for consistency
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.studentSubject.update({
+        where: {
+          studentId_subjectId: {
+            studentId,
+            subjectId,
+          },
+        },
+        data: { grade },
+      });
 
-    return result;
+      // Recalculate GPA within the same transaction
+      const enrollments = await tx.studentSubject.findMany({
+        where: { studentId },
+        include: { subject: true },
+      });
+
+      let totalPoints = 0;
+      let totalCredits = 0;
+
+      for (const enrollment of enrollments) {
+        if (enrollment.grade !== null) {
+          totalPoints += enrollment.grade * enrollment.subject.credit;
+          totalCredits += enrollment.subject.credit;
+        }
+      }
+
+      const gpa =
+        totalCredits > 0
+          ? parseFloat((totalPoints / totalCredits).toFixed(2))
+          : 0.0;
+
+      await tx.student.update({
+        where: { id: studentId },
+        data: { gpa: gpa },
+      });
+
+      return updated;
+    });
   }
 
   async calculateGPA(studentId: string) {
@@ -364,7 +404,7 @@ export class AssessmentService {
     });
 
     if (!student) {
-      throw new Error('Student profile not found');
+      throw new NotFoundException('Student profile not found');
     }
 
     const assignments = await this.prisma.assignment.findMany({

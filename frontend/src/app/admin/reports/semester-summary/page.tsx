@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, GraduationCap, TrendingUp, AlertTriangle, ChevronDown, Search, Filter, Download, Clock, Smile, FileText, ArrowUpDown } from 'lucide-react';
 import api, { API_URL } from '@/lib/api';
+import { normalizeUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
@@ -158,7 +159,7 @@ export default function SemesterSummaryPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-lg bg-slate-100 text-text-muted flex items-center justify-center text-xs font-semibold overflow-hidden border border-border">
                                                         {s.avatarUrl ? (
-                                                            <img src={s.avatarUrl.startsWith('http') ? s.avatarUrl : `${API_URL}${s.avatarUrl}`} className="w-full h-full object-cover" alt="" />
+                                                            <img src={normalizeUrl(s.avatarUrl)} className="w-full h-full object-cover" alt="" />
                                                         ) : s.firstName?.[0] || 'S'}
                                                     </div>
                                                     <div>

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -50,12 +50,12 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new Error('ไม่พบข้อมูลผู้ใช้งาน');
+      throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งาน');
     }
 
     const isMatch = await bcrypt.compare(data.oldPassword, user.password);
     if (!isMatch) {
-      throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+      throw new BadRequestException('รหัสผ่านเดิมไม่ถูกต้อง');
     }
 
     const hashedNewPassword = await bcrypt.hash(data.newPassword, 10);
