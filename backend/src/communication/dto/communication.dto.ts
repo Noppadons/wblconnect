@@ -46,3 +46,22 @@ export class TestLineDto {
   @IsString()
   to: string;
 }
+
+export class LineWebhookEventDto {
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @IsString()
+  replyToken?: string;
+}
+
+export class LineWebhookDto {
+  @IsOptional()
+  events?: LineWebhookEventDto[];
+
+  @IsOptional()
+  @IsString()
+  destination?: string;
+}

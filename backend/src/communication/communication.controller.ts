@@ -24,6 +24,7 @@ import {
   MarkAsReadDto,
   BroadcastLineDto,
   TestLineDto,
+  LineWebhookDto,
 } from './dto/communication.dto';
 
 @Controller('communication')
@@ -139,7 +140,7 @@ export class CommunicationController {
   async handleWebhook(
     @Headers('x-line-signature') signature: string,
     @RawBody() rawBody: Buffer,
-    @Body() body: any,
+    @Body() body: LineWebhookDto,
   ) {
     if (!signature || !rawBody) {
       return { success: false, message: 'Missing signature or body' };
