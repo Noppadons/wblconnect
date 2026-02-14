@@ -2,6 +2,16 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { Role } from '@prisma/client';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  avatarUrl?: string | null;
+}
 
 @Injectable()
 export class AuthService {
@@ -10,7 +20,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) { }
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string): Promise<AuthUser | null> {
     const normalizedEmail = email.toLowerCase();
     const user = await this.usersService.findByEmail(normalizedEmail);
 
@@ -29,7 +39,7 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
-  async login(user: any) {
+  async login(user: AuthUser) {
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),

@@ -39,8 +39,15 @@ export class TeacherController {
   async getMyStudents(
     @Req() req: any,
     @Query('classroomId') classroomId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.teacherService.getMyStudents(req.user.id, classroomId);
+    return this.teacherService.getMyStudents(
+      req.user.id,
+      classroomId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
+    );
   }
 
   @Post('behavior')

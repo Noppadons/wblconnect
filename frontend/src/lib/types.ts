@@ -380,3 +380,181 @@ export interface WarningItem {
   name: string;
   issue: string;
 }
+
+// ============================================================
+// Event Calendar
+// ============================================================
+
+export type EventType = 'HOLIDAY' | 'EXAM' | 'ACTIVITY' | 'MEETING' | 'DEADLINE' | 'OTHER';
+
+export interface SchoolEvent {
+  id: string;
+  title: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  type: EventType;
+  color?: string | null;
+  targetId?: string | null;
+  creatorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// Leave Request
+// ============================================================
+
+export type LeaveType = 'SICK' | 'PERSONAL' | 'OTHER';
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface LeaveRequest {
+  id: string;
+  studentId: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  type: LeaveType;
+  status: LeaveStatus;
+  attachments: string[];
+  reviewerId?: string | null;
+  reviewNote?: string | null;
+  reviewedAt?: string | null;
+  student?: Student;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// Leaderboard
+// ============================================================
+
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  studentCode: string;
+  name: string;
+  avatarUrl?: string | null;
+  classroom: string;
+}
+
+export interface AttendanceLeaderboardEntry extends LeaderboardEntry {
+  attendanceRate: number;
+  totalDays: number;
+  presentDays: number;
+}
+
+export interface BehaviorLeaderboardEntry extends LeaderboardEntry {
+  totalPoints: number;
+  positiveCount: number;
+  negativeCount: number;
+}
+
+export interface GpaLeaderboardEntry extends LeaderboardEntry {
+  gpa: number;
+}
+
+export interface SubmissionLeaderboardEntry extends LeaderboardEntry {
+  totalSubmissions: number;
+  onTimeSubmissions: number;
+  avgScore: number;
+}
+
+// ============================================================
+// Portfolio
+// ============================================================
+
+export type PortfolioCategory = 'AWARD' | 'ACTIVITY' | 'PROJECT' | 'CERTIFICATE' | 'VOLUNTEER' | 'OTHER';
+
+export interface PortfolioItem {
+  id: string;
+  studentId: string;
+  title: string;
+  description?: string | null;
+  category: PortfolioCategory;
+  fileUrl?: string | null;
+  link?: string | null;
+  date?: string | null;
+  isPublic: boolean;
+  student?: Student;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
+// QR Attendance
+// ============================================================
+
+export interface QRAttendanceSession {
+  id: string;
+  classroomId: string;
+  creatorId: string;
+  period: number;
+  code: string;
+  expiresAt: string;
+  isActive: boolean;
+  date: string;
+  classroom?: Classroom;
+  durationMinutes?: number;
+  createdAt: string;
+}
+
+// ============================================================
+// Survey / แบบประเมิน
+// ============================================================
+
+export type SurveyQuestionType = 'TEXT' | 'CHOICE' | 'RATING' | 'YESNO';
+
+export interface SurveyQuestion {
+  id: string;
+  surveyId: string;
+  text: string;
+  type: SurveyQuestionType;
+  options: string[];
+  required: boolean;
+  order: number;
+}
+
+export interface Survey {
+  id: string;
+  title: string;
+  description?: string | null;
+  creatorId: string;
+  targetId?: string | null;
+  isActive: boolean;
+  isAnonymous: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  questions: SurveyQuestion[];
+  responses?: { id: string }[];
+  _count?: { responses: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SurveyResponse {
+  id: string;
+  surveyId: string;
+  userId: string;
+  answers: Record<string, any>;
+  user?: { firstName: string; lastName: string };
+  createdAt: string;
+}
+
+export interface SurveyQuestionResult {
+  questionId: string;
+  text: string;
+  type: SurveyQuestionType;
+  total: number;
+  average?: number;
+  distribution?: { value: string | number; count: number }[];
+  answers?: string[];
+}
+
+export interface SurveyResults {
+  survey: Survey;
+  totalResponses: number;
+  questionResults: SurveyQuestionResult[];
+  responses?: SurveyResponse[];
+}

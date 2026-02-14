@@ -59,6 +59,7 @@ model Classroom {
   subjects          Subject[]
   assignments       Assignment[]
   schedules         Schedule[]
+  qrSessions        QRAttendanceSession[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -74,9 +75,14 @@ model User {
   role      Role     @default(STUDENT)
   teacher   Teacher?
   student   Student?
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  avatarUrl       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdEvents      Event[]              @relation("EventCreator")
+  reviewedLeaves     LeaveRequest[]       @relation("LeaveReviewer")
+  qrSessions         QRAttendanceSession[] @relation("QRSessionCreator")
+  createdSurveys     Survey[]             @relation("SurveyCreator")
+  surveyResponses    SurveyResponse[]
 }
 
 model Student {
@@ -90,6 +96,8 @@ model Student {
   submissions     Submission[]
   behaviorLogs    BehaviorLog[]
   enrolledSubjects StudentSubject[]
+  leaveRequests   LeaveRequest[]
+  portfolioItems  PortfolioItem[]
   parentLineToken String? // สำหรับแจ้งเตือนผู้ปกครองรายบุคคล
   gpa             Float    @default(0.00)
 
@@ -161,6 +169,8 @@ model Submission {
   updatedAt    DateTime   @updatedAt
 
   @@unique([studentId, assignmentId]) // Added for bulkUpdateGrades upsert
+  @@index([studentId, status])
+  @@index([assignmentId])
 }
 
 model LearningMaterial {
@@ -204,6 +214,8 @@ model BehaviorLog {
   createdAt DateTime @default(now())
 
   @@index([studentId])
+  @@index([studentId, type])
+  @@index([createdAt])
 }
 
 model Notification {
@@ -218,6 +230,10 @@ model Notification {
   creatorId String?
   readBy    UserNotification[]
   createdAt DateTime @default(now())
+
+  @@index([targetId])
+  @@index([createdAt])
+  @@index([type])
 }
 
 model UserNotification {
@@ -244,6 +260,8 @@ model StudentSubject {
   updatedAt DateTime @updatedAt
 
   @@unique([studentId, subjectId])
+  @@index([studentId])
+  @@index([subjectId])
 }
 
 model Schedule {
@@ -262,6 +280,8 @@ model Schedule {
 
   @@unique([dayOfWeek, periodStart, classroomId])
   @@unique([dayOfWeek, periodStart, teacherId])
+  @@index([teacherId])
+  @@index([classroomId])
 }
 
 enum Role {
@@ -275,4 +295,188 @@ enum AttendanceStatus {
   LATE
   ABSENT
   LEAVE
+}
+
+// ============================================================
+// Event Calendar
+// ============================================================
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  allDay      Boolean   @default(true)
+  type        EventType
+  color       String?   // hex color for calendar display
+  targetId    String?   // Classroom ID or null for school-wide
+  creatorId   String
+  creator     User      @relation("EventCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([type])
+  @@index([creatorId])
+}
+
+enum EventType {
+  HOLIDAY     // วันหยุด
+  EXAM        // สอบ
+  ACTIVITY    // กิจกรรม
+  MEETING     // ประชุม
+  DEADLINE    // กำหนดส่งงาน
+  OTHER       // อื่นๆ
+}
+
+// ============================================================
+// Leave Request
+// ============================================================
+
+model LeaveRequest {
+  id          String      @id @default(uuid())
+  studentId   String
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  type        LeaveType
+  status      LeaveStatus @default(PENDING)
+  attachments String[]    @default([])
+  reviewerId  String?     // Teacher who approved/rejected
+  reviewer    User?       @relation("LeaveReviewer", fields: [reviewerId], references: [id])
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+  @@index([startDate])
+  @@index([studentId, status])
+}
+
+enum LeaveType {
+  SICK        // ลาป่วย
+  PERSONAL    // ลากิจ
+  OTHER       // อื่นๆ
+}
+
+enum LeaveStatus {
+  PENDING     // รอพิจารณา
+  APPROVED    // อนุมัติ
+  REJECTED    // ไม่อนุมัติ
+}
+
+// ============================================================
+// Student Portfolio
+// ============================================================
+
+model PortfolioItem {
+  id          String        @id @default(uuid())
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    PortfolioCategory
+  fileUrl     String?       // รูปภาพหรือไฟล์แนบ
+  link        String?       // ลิงก์ภายนอก
+  date        DateTime?     // วันที่ได้รับ/ทำกิจกรรม
+  isPublic    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([category])
+}
+
+enum PortfolioCategory {
+  AWARD         // รางวัล/เกียรติบัตร
+  ACTIVITY      // กิจกรรม
+  PROJECT       // โปรเจค/ผลงาน
+  CERTIFICATE   // ใบประกาศ
+  VOLUNTEER     // จิตอาสา
+  OTHER         // อื่นๆ
+}
+
+// ============================================================
+// QR Code Attendance
+// ============================================================
+
+model QRAttendanceSession {
+  id          String    @id @default(uuid())
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  creatorId   String
+  creator     User      @relation("QRSessionCreator", fields: [creatorId], references: [id])
+  period      Int       // คาบเรียน 0-8
+  code        String    @unique // รหัส QR 6 หลัก
+  expiresAt   DateTime  // หมดอายุเมื่อไหร่
+  isActive    Boolean   @default(true)
+  date        DateTime  @default(now()) // วันที่เช็คชื่อ
+  createdAt   DateTime  @default(now())
+
+  @@index([code])
+  @@index([classroomId])
+  @@index([expiresAt])
+}
+
+// ============================================================
+// Survey / แบบประเมิน
+// ============================================================
+
+model Survey {
+  id          String           @id @default(uuid())
+  title       String
+  description String?
+  creatorId   String
+  creator     User             @relation("SurveyCreator", fields: [creatorId], references: [id])
+  targetId    String?          // Classroom ID or null for school-wide
+  isActive    Boolean          @default(true)
+  isAnonymous Boolean          @default(false)
+  startsAt    DateTime?        // เริ่มตอบได้เมื่อไหร่
+  endsAt      DateTime?        // หมดเขตตอบเมื่อไหร่
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([creatorId])
+  @@index([isActive])
+}
+
+model SurveyQuestion {
+  id        String             @id @default(uuid())
+  surveyId  String
+  survey    Survey             @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  text      String
+  type      SurveyQuestionType
+  options   String[]           @default([]) // ตัวเลือก (สำหรับ CHOICE/RATING)
+  required  Boolean            @default(true)
+  order     Int                @default(0)
+  createdAt DateTime           @default(now())
+
+  @@index([surveyId])
+}
+
+model SurveyResponse {
+  id        String   @id @default(uuid())
+  surveyId  String
+  survey    Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  answers   Json     // { questionId: answer } format
+  createdAt DateTime @default(now())
+
+  @@unique([surveyId, userId]) // ตอบได้ครั้งเดียว
+  @@index([surveyId])
+}
+
+enum SurveyQuestionType {
+  TEXT      // ข้อความอิสระ
+  CHOICE    // เลือกตอบ
+  RATING    // ให้คะแนน 1-5
+  YESNO     // ใช่/ไม่ใช่
 }

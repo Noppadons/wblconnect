@@ -1,5 +1,6 @@
 import { Injectable, ConflictException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateSubjectDto, UpdateSubjectDto, CreateMaterialDto } from './dto/school.dto';
 
 @Injectable()
 export class SchoolService {
@@ -94,13 +95,10 @@ export class SchoolService {
       include: {
         grade: true,
         homeroomTeacher: {
-          include: { user: true },
-        },
-        students: {
-          include: { user: true },
+          include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
         },
         _count: {
-          select: { students: true },
+          select: { students: true, subjects: true },
         },
       },
       orderBy: [{ grade: { level: 'asc' } }, { roomNumber: 'asc' }],
@@ -220,23 +218,27 @@ export class SchoolService {
     });
   }
 
-  async createSubject(data: any) {
+  async createSubject(data: CreateSubjectDto) {
+    if (!data.teacherId) {
+      throw new BadRequestException('กรุณาระบุครูผู้สอน');
+    }
+
     return this.prisma.subject.create({
       data: {
         name: data.name,
         code: data.code,
-        credit: parseFloat(data.credit),
+        credit: data.credit,
         teacherId: data.teacherId,
         classroomId: data.classroomId || null,
       },
     });
   }
 
-  async updateSubject(id: string, data: any) {
+  async updateSubject(id: string, data: UpdateSubjectDto) {
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.code) updateData.code = data.code;
-    if (data.credit) updateData.credit = parseFloat(data.credit);
+    if (data.credit !== undefined) updateData.credit = data.credit;
     if (data.teacherId) updateData.teacherId = data.teacherId;
     if (data.classroomId !== undefined)
       updateData.classroomId = data.classroomId || null;
@@ -335,7 +337,7 @@ export class SchoolService {
     return this.prisma.learningMaterial.delete({ where: { id } });
   }
 
-  async createLearningMaterialAsTeacher(userId: string, data: any) {
+  async createLearningMaterialAsTeacher(userId: string, data: CreateMaterialDto) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { userId },
       include: {

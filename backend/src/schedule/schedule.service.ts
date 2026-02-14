@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
+import { CreateScheduleDto } from './dto/create-schedule.dto';
 
 @Injectable()
 export class ScheduleService {
@@ -33,15 +34,15 @@ export class ScheduleService {
     return [];
   }
 
-  async create(data: any) {
+  async create(data: CreateScheduleDto) {
     // Check for conflicts in classroom
     const classroomConflict = await this.prisma.schedule.findFirst({
       where: {
         dayOfWeek: data.dayOfWeek,
         classroomId: data.classroomId,
         AND: [
-          { periodStart: { lte: parseInt(data.periodEnd) } },
-          { periodEnd: { gte: parseInt(data.periodStart) } },
+          { periodStart: { lte: data.periodEnd } },
+          { periodEnd: { gte: data.periodStart } },
         ],
       },
     });
@@ -58,8 +59,8 @@ export class ScheduleService {
         dayOfWeek: data.dayOfWeek,
         teacherId: data.teacherId,
         AND: [
-          { periodStart: { lte: parseInt(data.periodEnd) } },
-          { periodEnd: { gte: parseInt(data.periodStart) } },
+          { periodStart: { lte: data.periodEnd } },
+          { periodEnd: { gte: data.periodStart } },
         ],
       },
     });
@@ -73,8 +74,8 @@ export class ScheduleService {
     return this.prisma.schedule.create({
       data: {
         dayOfWeek: data.dayOfWeek,
-        periodStart: parseInt(data.periodStart),
-        periodEnd: parseInt(data.periodEnd),
+        periodStart: data.periodStart,
+        periodEnd: data.periodEnd,
         subjectId: data.subjectId,
         classroomId: data.classroomId,
         teacherId: data.teacherId,

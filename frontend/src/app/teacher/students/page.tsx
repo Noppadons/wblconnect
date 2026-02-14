@@ -21,6 +21,13 @@ export default function MyStudentsPage() {
     const [activeTab, setActiveTab] = useState<'homeroom' | 'all'>('homeroom');
     const router = useRouter();
 
+    const fetchStudentsByClassroom = async (classroomId: string) => {
+        try {
+            const res = await api.get('/school/classrooms/students', { params: { classroomIds: classroomId } });
+            setStudents(res.data || []);
+        } catch { setStudents([]); }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -28,7 +35,7 @@ export default function MyStudentsPage() {
                 const myRes = await api.get('/school/my-classrooms');
                 const myRooms: any[] = myRes.data || [];
 
-                // ดึงทุกห้องเรียน
+                // ดึงทุกห้องเรียน (lightweight — no embedded students)
                 const allRes = await api.get('/school/all-classrooms');
                 const allRooms: any[] = allRes.data || [];
 
@@ -43,16 +50,16 @@ export default function MyStudentsPage() {
                 setHomeroomClassroom(homeroom);
                 setAllClassrooms(allRooms.length > 0 ? allRooms : myRooms);
 
-                // ถ้ามีห้องที่ปรึกษา → เริ่มที่ tab homeroom
+                // ถ้ามีห้องที่ปรึกษา → เริ่มที่ tab homeroom + fetch students
                 if (homeroom) {
                     setActiveTab('homeroom');
-                    setStudents(homeroom.students || []);
+                    await fetchStudentsByClassroom(homeroom.id);
                 } else {
                     const displayRooms = allRooms.length > 0 ? allRooms : myRooms;
                     setActiveTab('all');
                     if (displayRooms.length > 0) {
                         setSelectedClassroomId(displayRooms[0].id);
-                        setStudents(displayRooms[0].students || []);
+                        await fetchStudentsByClassroom(displayRooms[0].id);
                     }
                 }
             } catch (err) { console.error(err); }
@@ -61,24 +68,22 @@ export default function MyStudentsPage() {
         fetchData();
     }, []);
 
-    const handleTabChange = (tab: 'homeroom' | 'all') => {
+    const handleTabChange = async (tab: 'homeroom' | 'all') => {
         setActiveTab(tab);
         setSearchTerm('');
         if (tab === 'homeroom' && homeroomClassroom) {
-            setStudents(homeroomClassroom.students || []);
+            await fetchStudentsByClassroom(homeroomClassroom.id);
         } else if (tab === 'all') {
             const id = selectedClassroomId || allClassrooms[0]?.id || '';
             if (!selectedClassroomId && allClassrooms.length > 0) setSelectedClassroomId(allClassrooms[0].id);
-            const room = allClassrooms.find(c => c.id === id);
-            setStudents(room?.students || []);
+            await fetchStudentsByClassroom(id);
         }
     };
 
-    const handleClassroomChange = (id: string) => {
+    const handleClassroomChange = async (id: string) => {
         setSelectedClassroomId(id);
         setSearchTerm('');
-        const room = allClassrooms.find(c => c.id === id);
-        setStudents(room?.students || []);
+        await fetchStudentsByClassroom(id);
     };
 
     const currentClassroom = activeTab === 'homeroom' ? homeroomClassroom : allClassrooms.find(c => c.id === selectedClassroomId);
@@ -114,7 +119,7 @@ export default function MyStudentsPage() {
                         {homeroomClassroom && (
                             <button onClick={() => handleTabChange('homeroom')}
                                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === 'homeroom' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-secondary'}`}>
-                                <Heart size={14} /> ห้องที่ปรึกษา ({homeroomClassroom.students?.length || 0})
+                                <Heart size={14} /> ห้องที่ปรึกษา ({homeroomClassroom._count?.students || 0})
                             </button>
                         )}
                         <button onClick={() => handleTabChange('all')}
@@ -138,7 +143,7 @@ export default function MyStudentsPage() {
                                 <select value={selectedClassroomId} onChange={(e) => handleClassroomChange(e.target.value)} className="select-field pr-10 font-semibold">
                                     {allClassrooms.map(c => (
                                         <option key={c.id} value={c.id}>
-                                            ชั้น {c.grade?.level}/{c.roomNumber} ({c.students?.length || 0} คน)
+                                            ชั้น {c.grade?.level}/{c.roomNumber} ({c._count?.students || 0} คน)
                                         </option>
                                     ))}
                                 </select>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Users, GraduationCap, School, Activity, ArrowRight, Calendar, Clock, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -17,20 +17,22 @@ export default function AdminDashboardPage() {
     const [loading, setLoading] = useState(true);
     const { user } = useUser();
 
-    useEffect(() => {
-        Promise.all([
-            api.get('/admin/stats'),
-            api.get('/admin/charts').catch(() => ({ data: null })),
-        ])
-            .then(([statsRes, chartsRes]) => {
-                setStats(statsRes.data);
-                setCharts(chartsRes.data);
-            })
-            .catch(() => {
-                toast.error('ไม่สามารถโหลดข้อมูลสถิติได้');
-            })
-            .finally(() => setLoading(false));
+    const fetchData = useCallback(async () => {
+        try {
+            const [statsRes, chartsRes] = await Promise.all([
+                api.get('/admin/stats'),
+                api.get('/admin/charts').catch(() => ({ data: null })),
+            ]);
+            setStats(statsRes.data);
+            setCharts(chartsRes.data);
+        } catch {
+            toast.error('ไม่สามารถโหลดข้อมูลสถิติได้');
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const attendanceTrend = charts?.attendanceTrend?.map((d) => d.value) || [0, 0, 0, 0, 0, 0, 0];
     const scoreDistribution = charts?.scoreDistribution?.map((d) => d.value) || [0, 0, 0, 0, 0, 0, 0];

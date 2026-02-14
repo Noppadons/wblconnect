@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -45,7 +46,7 @@ describe('AuthService', () => {
       password: '$2a$10$hashedpassword',
       firstName: 'สมชาย',
       lastName: 'ใจดี',
-      role: 'STUDENT',
+      role: Role.STUDENT,
     };
 
     it('should return user without password when credentials are valid', async () => {
@@ -56,8 +57,8 @@ describe('AuthService', () => {
 
       expect(result).toBeDefined();
       expect(result).not.toHaveProperty('password');
-      expect(result.email).toBe('test@school.ac.th');
-      expect(result.firstName).toBe('สมชาย');
+      expect(result!.email).toBe('test@school.ac.th');
+      expect(result!.firstName).toBe('สมชาย');
     });
 
     it('should return null when user not found', async () => {
@@ -92,7 +93,7 @@ describe('AuthService', () => {
       email: 'test@school.ac.th',
       firstName: 'สมชาย',
       lastName: 'ใจดี',
-      role: 'STUDENT',
+      role: Role.STUDENT,
     };
 
     it('should return access_token and user info', async () => {
@@ -105,7 +106,7 @@ describe('AuthService', () => {
         email: 'test@school.ac.th',
         firstName: 'สมชาย',
         lastName: 'ใจดี',
-        role: 'STUDENT',
+        role: Role.STUDENT,
       });
     });
 
@@ -115,12 +116,12 @@ describe('AuthService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith({
         email: 'test@school.ac.th',
         sub: 'user-1',
-        role: 'STUDENT',
+        role: Role.STUDENT,
       });
     });
 
     it('should not include password in user response', async () => {
-      const result = await service.login({ ...mockUser, password: 'secret' });
+      const result = await service.login(mockUser);
 
       expect(result.user).not.toHaveProperty('password');
     });

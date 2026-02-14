@@ -138,7 +138,7 @@ export class TeacherService {
     });
   }
 
-  async getMyStudents(userId: string, classroomId?: string) {
+  async getMyStudents(userId: string, classroomId?: string, page = 1, limit = 50) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { userId },
       include: {
@@ -173,21 +173,31 @@ export class TeacherService {
       targetClassroomIds = Array.from(allClassroomIds);
     }
 
-    return this.prisma.student.findMany({
-      where: { classroomId: { in: targetClassroomIds } },
-      include: {
-        user: true,
-        classroom: { include: { grade: true } },
-        attendance: {
-          take: 5,
-          orderBy: { date: 'desc' },
+    const where = { classroomId: { in: targetClassroomIds } };
+    const safeLimit = Math.min(limit, 200);
+
+    const [data, total] = await Promise.all([
+      this.prisma.student.findMany({
+        where,
+        include: {
+          user: true,
+          classroom: { include: { grade: true } },
+          attendance: {
+            take: 5,
+            orderBy: { date: 'desc' },
+          },
+          behaviorLogs: {
+            select: { points: true },
+          },
         },
-        behaviorLogs: {
-          select: { points: true },
-        },
-      },
-      orderBy: [{ classroomId: 'asc' }, { studentCode: 'asc' }],
-    });
+        orderBy: [{ classroomId: 'asc' }, { studentCode: 'asc' }],
+        skip: (page - 1) * safeLimit,
+        take: safeLimit,
+      }),
+      this.prisma.student.count({ where }),
+    ]);
+
+    return { data, meta: { total, page, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) } };
   }
 
   async addBehaviorScore(

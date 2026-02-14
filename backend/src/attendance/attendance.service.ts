@@ -2,15 +2,23 @@ import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nest
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceStatus } from '@prisma/client';
 import { LineService } from '../communication/line.service';
+import { getThaiNow, normalizeToDateOnly, getThaiDayRange } from '../common/utils/date.util';
+import { NotificationQueue } from '../common/utils/notification-queue.util';
 
 @Injectable()
 export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
+  private readonly notificationQueue: NotificationQueue;
 
   constructor(
     private prisma: PrismaService,
     private lineService: LineService,
-  ) { }
+  ) {
+    this.notificationQueue = new NotificationQueue(
+      (token, message) => this.lineService.sendMessage(token, message),
+      5, // concurrency: 5 concurrent LINE API calls
+    );
+  }
 
   async checkAttendance(
     userId: string,
@@ -25,25 +33,8 @@ export class AttendanceService {
     await this.validateTeacherAccess(userId, data.studentId);
 
     // Use provided date or default to Thai Time
-    let targetDate: Date;
-    if (data.date) {
-      targetDate = new Date(data.date);
-    } else {
-      // Get current date in UTC+7
-      const now = new Date();
-      targetDate = new Date(now.getTime() + (7 * 3600000));
-    }
-
-    // Standardize to midnight for "date" portion if we were using date-only, 
-    // but here we keep the exact time the teacher checked.
-    // However, the unique constraint is on [studentId, date, period].
-    // If we want to allow only one check-in per day per period, 
-    // we MUST normalize the date to YYYY-MM-DD.
-
-    const year = targetDate.getUTCFullYear();
-    const month = targetDate.getUTCMonth();
-    const day = targetDate.getUTCDate();
-    const normalizedDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+    const targetDate = data.date ? new Date(data.date) : getThaiNow();
+    const normalizedDate = normalizeToDateOnly(targetDate);
 
     const attendance = await this.prisma.attendance.upsert({
       where: {
@@ -196,28 +187,55 @@ export class AttendanceService {
       }[];
     },
   ) {
-    // 1. Pre-validate access for all students to avoid partial failures (optional but recommended)
-    // For large sets, we might want a more optimized check, but here we'll do it per-record or use a combined query.
-    // For now, let's stick to a combined check for the classroom if possible.
+    // Pre-validate: collect unique studentIds and validate access once
+    const uniqueStudentIds = [...new Set(data.records.map((r) => r.studentId))];
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role !== 'ADMIN') {
+      // Batch validate: find all students' classrooms, then check teacher access
+      const students = await this.prisma.student.findMany({
+        where: { id: { in: uniqueStudentIds } },
+        select: { id: true, classroomId: true },
+      });
+
+      if (students.length !== uniqueStudentIds.length) {
+        throw new NotFoundException('ไม่พบข้อมูลนักเรียนบางคน');
+      }
+
+      const uniqueClassroomIds = [...new Set(students.map((s) => s.classroomId))];
+
+      if (user?.role === 'TEACHER') {
+        const accessibleClassrooms = await this.prisma.classroom.findMany({
+          where: {
+            id: { in: uniqueClassroomIds },
+            OR: [
+              { homeroomTeacher: { userId } },
+              { subjects: { some: { teacher: { userId } } } },
+            ],
+          },
+          select: { id: true },
+        });
+
+        const accessibleIds = new Set(accessibleClassrooms.map((c) => c.id));
+        const denied = uniqueClassroomIds.filter((id) => !accessibleIds.has(id));
+        if (denied.length > 0) {
+          throw new ForbiddenException('คุณไม่มีสิทธิ์เช็คชื่อนักเรียนในบางห้องเรียน');
+        }
+      } else {
+        // STUDENT or other roles — check each owns the record
+        for (const sid of uniqueStudentIds) {
+          const student = await this.prisma.student.findUnique({ where: { id: sid } });
+          if (!student || student.userId !== userId) {
+            throw new ForbiddenException('คุณไม่มีสิทธิ์จัดการข้อมูลนักเรียนท่านนี้');
+          }
+        }
+      }
+    }
 
     const results = await this.prisma.$transaction(async (tx) => {
       const ops = data.records.map(async (record) => {
-        // Internal security check within transaction
-        await this.validateTeacherAccess(userId, record.studentId, tx);
-
-        // Use provided date or default to Thai Time
-        let targetDate: Date;
-        if (record.date) {
-          targetDate = new Date(record.date);
-        } else {
-          const now = new Date();
-          targetDate = new Date(now.getTime() + 7 * 3600000);
-        }
-
-        const year = targetDate.getUTCFullYear();
-        const month = targetDate.getUTCMonth();
-        const day = targetDate.getUTCDate();
-        const normalizedDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+        const targetDate = record.date ? new Date(record.date) : getThaiNow();
+        const normalizedDate = normalizeToDateOnly(targetDate);
 
         return tx.attendance.upsert({
           where: {
@@ -297,39 +315,40 @@ export class AttendanceService {
     }
   }
 
-  private async handleBulkNotifications(attendances: any[]) {
-    for (const attendance of attendances) {
-      try {
+  private handleBulkNotifications(attendances: any[]) {
+    // Build notification tasks
+    const tasks = attendances
+      .map((attendance) => {
         const student = attendance.student;
+        if (!student?.parentLineToken) return null;
+
         const name = `${student.user.firstName} ${student.user.lastName}`;
         let message = '';
-        let shouldNotify = false;
 
         if (attendance.period === 0) {
           if (attendance.status === AttendanceStatus.ABSENT) {
             message = `❌ [ขาดการเข้าแถว]\nน้อง ${name}\nสถานะ: ขาดการเข้าแถวหน้าเสาธงครับ`;
-            shouldNotify = true;
           } else if (attendance.status === AttendanceStatus.LATE) {
             message = `⏰ [เข้าแถวสาย]\nน้อง ${name}\nสถานะ: มาเข้าแถวสายครับ`;
-            shouldNotify = true;
           }
         } else {
           if (attendance.status === AttendanceStatus.ABSENT) {
             message = `❌ [ขาดเรียน]\nน้อง ${name}\nสถานะ: ขาดเรียนในคาบที่ ${attendance.period} ครับ`;
-            shouldNotify = true;
           } else if (attendance.status === AttendanceStatus.LATE) {
             message = `⏰ [มาสาย]\nน้อง ${name}\nสถานะ: มาเรียนสายในคาบที่ ${attendance.period} ครับ`;
-            shouldNotify = true;
           }
         }
 
-        if (shouldNotify && student.parentLineToken) {
-          await this.lineService.sendMessage(student.parentLineToken, message);
-        }
-      } catch (err) {
-        this.logger.warn(`LINE notification failed for student ${attendance.student?.id}: ${(err as Error).message}`);
-      }
-    }
+        if (!message) return null;
+        return { token: student.parentLineToken, message, studentId: student.id };
+      })
+      .filter(Boolean) as { token: string; message: string; studentId: string }[];
+
+    if (tasks.length === 0) return;
+
+    // Fire-and-forget: enqueue notifications without blocking API response
+    this.notificationQueue.enqueue(tasks);
+    this.logger.log(`Enqueued ${tasks.length} LINE notifications (pending: ${this.notificationQueue.pendingCount})`);
   }
 
   async getClassroomAttendance(
@@ -343,29 +362,8 @@ export class AttendanceService {
       throw new ForbiddenException('คุณไม่มีสิทธิ์ดูข้อมูลเข้าเรียนของห้องนี้');
     }
 
-    // Use provided date or default to Thai Time
-    let baseDate: Date;
-    if (date) {
-      baseDate = new Date(date);
-    } else {
-      const now = new Date();
-      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-      baseDate = new Date(utc + 3600000 * 7); // UTC+7
-    }
-
-    // Calculate start and end of that day in Thai Time (UTC+7)
-    // We want records from YYYY-MM-DDT00:00:00.000+07:00 to YYYY-MM-DDT23:59:59.999+07:00
-    // In UTC, this is (UTC-7) to (UTC-7)
-    const year = baseDate.getUTCFullYear();
-    const month = baseDate.getUTCMonth();
-    const day = baseDate.getUTCDate();
-
-    // Start: YYYY-MM-DDT00:00:00 in Thai time = YYYY-MM-DDT17:00:00-1 day in UTC
-    const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-    startOfDay.setUTCHours(startOfDay.getUTCHours() - 7);
-
-    const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-    endOfDay.setUTCHours(endOfDay.getUTCHours() - 7);
+    const baseDate = date ? new Date(date) : getThaiNow();
+    const { start: startOfDay, end: endOfDay } = getThaiDayRange(baseDate);
 
     return this.prisma.attendance.findMany({
       where: {
@@ -394,15 +392,8 @@ export class AttendanceService {
       throw new ForbiddenException('คุณไม่มีสิทธิ์ดูข้อมูลบางห้องเรียนที่คุณเลือก');
     }
 
-    // Date normalization logic (reused)
-    let baseDate = date ? new Date(date) : new Date();
-    const year = baseDate.getUTCFullYear();
-    const month = baseDate.getUTCMonth();
-    const day = baseDate.getUTCDate();
-    const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-    startOfDay.setUTCHours(startOfDay.getUTCHours() - 7);
-    const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-    endOfDay.setUTCHours(endOfDay.getUTCHours() - 7);
+    const baseDate = date ? new Date(date) : getThaiNow();
+    const { start: startOfDay, end: endOfDay } = getThaiDayRange(baseDate);
 
     return this.prisma.attendance.findMany({
       where: {

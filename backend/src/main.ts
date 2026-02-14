@@ -1,15 +1,17 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { NestFactory, HttpAdapterHost } from '@nestjs/core';
+import { NestFactory, HttpAdapterHost, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
 import helmet from 'helmet';
 import * as express from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { NoCacheInterceptor } from './common/interceptors/no-cache.interceptor';
+import { CacheControlInterceptor } from './common/interceptors/cache-control.interceptor';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -18,6 +20,13 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
+
+  // API Versioning: /api/v1/... (default), future /api/v2/...
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+    prefix: 'v',
+  });
 
   // STARTUP VALIDATION: Ensure critical env vars are set
   const requiredEnv = ['JWT_SECRET', 'DATABASE_URL'];
@@ -37,7 +46,8 @@ async function bootstrap() {
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
-  app.useGlobalInterceptors(new NoCacheInterceptor());
+  const reflector = app.get(Reflector);
+  app.useGlobalInterceptors(new LoggingInterceptor(), new NoCacheInterceptor(), new CacheControlInterceptor(reflector));
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -76,6 +86,9 @@ async function bootstrap() {
     .addTag('teacher', 'Teacher Features')
     .addTag('reports', 'Reports & Exports')
     .addTag('upload', 'File Upload')
+    .addTag('events', 'Event Calendar')
+    .addTag('leave', 'Leave Requests')
+    .addTag('leaderboard', 'Leaderboard & Rankings')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);

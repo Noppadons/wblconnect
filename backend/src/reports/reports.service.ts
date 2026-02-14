@@ -12,7 +12,7 @@ export class ReportsService {
     private assessmentService: AssessmentService,
   ) { }
 
-  async generateAttendanceExcel(userId: string, classroomId: string) {
+  async generateAttendanceExcel(userId: string, classroomId: string, startDate?: string, endDate?: string) {
     // SECURITY CHECK
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user?.role !== 'ADMIN') {
@@ -28,11 +28,19 @@ export class ReportsService {
         throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงรายงานของห้องเรียนนี้');
       }
     }
+
+    // Build date filter to avoid loading all historical records
+    const dateFilter: any = {};
+    if (startDate) dateFilter.gte = new Date(startDate);
+    if (endDate) dateFilter.lte = new Date(endDate);
+
     const students = await this.prisma.student.findMany({
       where: { classroomId },
       include: {
         user: true,
-        attendance: true,
+        attendance: {
+          where: Object.keys(dateFilter).length > 0 ? { date: dateFilter } : undefined,
+        },
       },
     });
 

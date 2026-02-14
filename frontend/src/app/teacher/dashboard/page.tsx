@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Users, UserX, X, CheckCircle, BookOpen, Clock, Smile, ClipboardCheck } from 'lucide-react';
 import AppShell from '@/components/Layout/AppShell';
 import KpiCard from '@/components/Dashboard/KpiCard';
@@ -20,28 +20,27 @@ export default function TeacherDashboard() {
     const [loading, setLoading] = useState(true);
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [warningRes, scheduleRes, statsRes] = await Promise.all([
-                    api.get('/assessment/early-warning').catch(() => ({ data: { highAbsence: [] } })),
-                    api.get('/schedule/my-schedule').catch(() => ({ data: [] })),
-                    api.get('/teacher/stats').catch(() => ({ data: { totalStudents: 0, attendanceRate: 0 } }))
-                ]);
-                if (warningRes.data?.highAbsence) {
-                    setWarnings(warningRes.data.highAbsence.map((s: EarlyWarningStudent) => ({
-                        id: s.id,
-                        name: s.user ? `${s.user.firstName} ${s.user.lastName}` : 'ไม่ทราบชื่อ',
-                        issue: `ขาดเรียน ${s.attendance?.length || 0} ครั้ง`,
-                    })));
-                }
-                setSchedules(scheduleRes.data);
-                setStats(statsRes.data);
-            } catch (err) { console.error(err); }
-            finally { setLoading(false); }
-        };
-        fetchData();
+    const fetchData = useCallback(async () => {
+        try {
+            const [warningRes, scheduleRes, statsRes] = await Promise.all([
+                api.get('/assessment/early-warning').catch(() => ({ data: { highAbsence: [] } })),
+                api.get('/schedule/my-schedule').catch(() => ({ data: [] })),
+                api.get('/teacher/stats').catch(() => ({ data: { totalStudents: 0, attendanceRate: 0 } }))
+            ]);
+            if (warningRes.data?.highAbsence) {
+                setWarnings(warningRes.data.highAbsence.map((s: EarlyWarningStudent) => ({
+                    id: s.id,
+                    name: s.user ? `${s.user.firstName} ${s.user.lastName}` : 'ไม่ทราบชื่อ',
+                    issue: `ขาดเรียน ${s.attendance?.length || 0} ครั้ง`,
+                })));
+            }
+            setSchedules(scheduleRes.data);
+            setStats(statsRes.data);
+        } catch (err) { console.error(err); }
+        finally { setLoading(false); }
     }, []);
+
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     return (
         <AppShell role="TEACHER" sidebarItems={TEACHER_SIDEBAR} user={user}

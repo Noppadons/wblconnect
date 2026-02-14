@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateAssignmentDto } from './dto/create-assignment.dto';
 
 @Injectable()
 export class AssessmentService {
@@ -7,7 +8,7 @@ export class AssessmentService {
 
   constructor(private prisma: PrismaService) { }
 
-  async createAssignment(userId: string, data: any) {
+  async createAssignment(userId: string, data: CreateAssignmentDto) {
     // SECURITY CHECK: Ensure the teacher owns this subject
     const subject = await this.prisma.subject.findUnique({
       where: { id: data.subjectId },

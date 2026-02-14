@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 export const API_URL = rawApiUrl
-    ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`)
-    : '/api'; // production sync
+    ? (rawApiUrl.endsWith('/api') ? `${rawApiUrl}/v1` : `${rawApiUrl}/api/v1`)
+    : '/api/v1'; // production sync — versioned API
 
 const api = axios.create({
     baseURL: API_URL,

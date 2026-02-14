@@ -9,6 +9,7 @@ import {
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('users')
 export class UsersController {
@@ -22,7 +23,7 @@ export class UsersController {
 
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
-  updateProfile(@Req() req: any, @Body() data: { avatarUrl?: string }) {
+  updateProfile(@Req() req: any, @Body() data: UpdateProfileDto) {
     return this.usersService.update(req.user.id, data);
   }
 

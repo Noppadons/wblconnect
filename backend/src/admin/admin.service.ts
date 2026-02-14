@@ -2,6 +2,16 @@ import { Injectable, ConflictException, BadRequestException, NotFoundException, 
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { SchoolService } from '../school/school.service';
+import { getThaiNow, getThaiDayRange } from '../common/utils/date.util';
+import {
+  CreateStudentDto,
+  UpdateStudentDto,
+  CreateTeacherDto,
+  UpdateTeacherDto,
+  CreateClassroomDto,
+  UpdateClassroomDto,
+  UpdateSettingsDto,
+} from './dto/admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -13,14 +23,8 @@ export class AdminService {
   ) { }
 
   async getDashboardStats() {
-    const now = new Date();
-    const thaiTime = new Date(
-      now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
-    );
-    const startOfDay = new Date(thaiTime);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(thaiTime);
-    endOfDay.setHours(23, 59, 59, 999);
+    const thaiNow = getThaiNow();
+    const { start: startOfDay, end: endOfDay } = getThaiDayRange(thaiNow);
 
     const [totalStudents, totalTeachers, totalClassrooms, attendanceToday] =
       await Promise.all([
@@ -47,10 +51,7 @@ export class AdminService {
   }
 
   async getDashboardCharts() {
-    const now = new Date();
-    const thaiTime = new Date(
-      now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
-    );
+    const thaiTime = getThaiNow();
 
     // Attendance trend: last 7 days using GROUP BY
     const totalStudents = await this.prisma.student.count();
@@ -157,7 +158,7 @@ export class AdminService {
     };
   }
 
-  async createStudent(data: any) {
+  async createStudent(data: CreateStudentDto) {
     const {
       email,
       password,
@@ -180,6 +181,10 @@ export class AdminService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    if (!classroomId) {
+      throw new BadRequestException('กรุณาระบุห้องเรียน');
+    }
+
     return this.prisma.user.create({
       data: {
         email: normalizedEmail,
@@ -191,7 +196,7 @@ export class AdminService {
         student: {
           create: {
             studentCode,
-            classroomId: classroomId || undefined,
+            classroom: { connect: { id: classroomId } },
             parentLineToken: data.parentLineToken || null,
           },
         },
@@ -206,7 +211,7 @@ export class AdminService {
     });
   }
 
-  async updateStudent(id: string, data: any) {
+  async updateStudent(id: string, data: UpdateStudentDto) {
     const student = await this.prisma.student.findUnique({
       where: { id },
       include: { user: true },
@@ -312,7 +317,7 @@ export class AdminService {
     };
   }
 
-  async createTeacher(data: any) {
+  async createTeacher(data: CreateTeacherDto) {
     const normalizedEmail = data.email.toLowerCase();
     const existingUser = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
@@ -337,7 +342,7 @@ export class AdminService {
     });
   }
 
-  async updateTeacher(id: string, data: any) {
+  async updateTeacher(id: string, data: UpdateTeacherDto) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
       include: { user: true },
@@ -394,7 +399,7 @@ export class AdminService {
     });
   }
 
-  async createClassroom(data: any) {
+  async createClassroom(data: CreateClassroomDto) {
     const {
       semesterId: rawSemesterId,
       gradeLevel,
@@ -435,7 +440,7 @@ export class AdminService {
     });
   }
 
-  async updateClassroom(id: string, data: any) {
+  async updateClassroom(id: string, data: UpdateClassroomDto) {
     const {
       roomNumber,
       homeroomTeacherId,
@@ -499,93 +504,105 @@ export class AdminService {
   async getSemesterSummary(classroomId?: string) {
     const whereClause = classroomId ? { classroomId } : {};
 
-    // PERFORMANCE FIX: Use selective fields and aggregated counting
-    const students = await this.prisma.student.findMany({
-      where: whereClause,
-      include: {
-        user: { select: { firstName: true, lastName: true, avatarUrl: true } },
-        classroom: { include: { grade: true } },
-        _count: {
-          select: {
-            enrolledSubjects: true,
-            submissions: true,
-            attendance: true,
-          },
+    // PERFORMANCE: Fetch students with minimal data (no embedded arrays)
+    const [students, attendanceStats, behaviorStats, failingSubjects, submissionCounts] = await Promise.all([
+      // 1. Students with basic info only
+      this.prisma.student.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          studentCode: true,
+          gpa: true,
+          classroomId: true,
+          user: { select: { firstName: true, lastName: true, avatarUrl: true } },
+          classroom: { include: { grade: true } },
+          _count: { select: { enrolledSubjects: true, submissions: true, attendance: true } },
         },
-        attendance: {
-          select: { status: true },
-        },
-        behaviorLogs: {
-          select: { type: true, points: true },
-        },
-        submissions: {
-          where: { status: 'GRADED' },
-          select: {
-            points: true,
-            assignment: { select: { maxPoints: true } },
-          },
-        },
-        // Only fetch failing subjects for risk assessment
-        enrolledSubjects: {
-          where: { grade: { lt: 1.0, not: null } },
-          select: { id: true },
-        },
-      },
-    });
+      }),
+      // 2. Attendance aggregated by studentId + status (DB-level)
+      this.prisma.attendance.groupBy({
+        by: ['studentId', 'status'],
+        where: { student: whereClause },
+        _count: { id: true },
+      }),
+      // 3. Behavior aggregated by studentId + type (DB-level)
+      this.prisma.behaviorLog.groupBy({
+        by: ['studentId', 'type'],
+        where: { student: whereClause },
+        _sum: { points: true },
+      }),
+      // 4. Failing subjects count per student (DB-level)
+      this.prisma.studentSubject.groupBy({
+        by: ['studentId'],
+        where: { student: whereClause, grade: { lt: 1.0, not: null } },
+        _count: { id: true },
+      }),
+      // 5. Graded submissions count per student (DB-level)
+      this.prisma.submission.groupBy({
+        by: ['studentId'],
+        where: { student: whereClause, status: 'GRADED' },
+        _count: { id: true },
+        _avg: { points: true },
+      }),
+    ]);
+
+    // Build lookup maps for O(1) access
+    const attendanceMap = new Map<string, Record<string, number>>();
+    for (const row of attendanceStats) {
+      if (!attendanceMap.has(row.studentId)) {
+        attendanceMap.set(row.studentId, { present: 0, late: 0, absent: 0, leave: 0 });
+      }
+      const map = attendanceMap.get(row.studentId)!;
+      map[row.status.toLowerCase()] = row._count.id;
+    }
+
+    const behaviorMap = new Map<string, { positive: number; negative: number }>();
+    for (const row of behaviorStats) {
+      if (!behaviorMap.has(row.studentId)) {
+        behaviorMap.set(row.studentId, { positive: 0, negative: 0 });
+      }
+      const map = behaviorMap.get(row.studentId)!;
+      if (row.type === 'POSITIVE') map.positive = row._sum.points || 0;
+      else map.negative = Math.abs(row._sum.points || 0);
+    }
+
+    const failingMap = new Map<string, number>();
+    for (const row of failingSubjects) {
+      failingMap.set(row.studentId, row._count.id);
+    }
+
+    const submissionMap = new Map<string, { count: number; avgPoints: number }>();
+    for (const row of submissionCounts) {
+      submissionMap.set(row.studentId, { count: row._count.id, avgPoints: row._avg.points || 0 });
+    }
 
     const ABSENT_THRESHOLD = 20;
     const LOW_GPA_THRESHOLD = 2.0;
 
     const studentSummaries = students.map((s) => {
-      // Use pre-calculated GPA from DB (Trusting the AssessmentService sync logic)
       const gpa = s.gpa || 0;
 
-      // Attendance Metrics
-      const stats = s.attendance.reduce(
-        (acc, curr) => {
-          acc[curr.status.toLowerCase()]++;
-          return acc;
-        },
-        { present: 0, late: 0, absent: 0, leave: 0 } as any,
-      );
-
+      // Attendance from aggregated map
+      const stats = attendanceMap.get(s.id) || { present: 0, late: 0, absent: 0, leave: 0 };
       const totalAttendance = s._count.attendance;
       const attendanceRate =
         totalAttendance > 0
           ? Math.round(((stats.present + stats.late) / totalAttendance) * 10000) / 100
           : 0;
 
-      // Behavior Metrics
-      let behaviorScore = 0;
-      let positivePts = 0;
-      let negativePts = 0;
-      s.behaviorLogs.forEach((b) => {
-        if (b.type === 'POSITIVE') positivePts += b.points;
-        else negativePts += Math.abs(b.points);
-      });
-      behaviorScore = positivePts - negativePts;
+      // Behavior from aggregated map
+      const beh = behaviorMap.get(s.id) || { positive: 0, negative: 0 };
+      const behaviorScore = beh.positive - beh.negative;
 
-      // Submissions Metrics
-      const graded = s.submissions;
-      const avgScore =
-        graded.length > 0
-          ? Math.round(
-            graded.reduce(
-              (sum, sub) =>
-                sum +
-                ((sub.points || 0) / (sub.assignment?.maxPoints || 100)) *
-                100,
-              0,
-            ) / graded.length,
-          )
-          : 0;
+      // Submissions from aggregated map
+      const sub = submissionMap.get(s.id) || { count: 0, avgPoints: 0 };
 
       // Risk flags
       const risks: string[] = [];
       if (gpa > 0 && gpa < LOW_GPA_THRESHOLD) risks.push('GPA ต่ำ');
       if (stats.absent >= ABSENT_THRESHOLD) risks.push('ขาดเรียนเกินเกณฑ์');
       if (behaviorScore < -10) risks.push('พฤติกรรมเสี่ยง');
-      if (s.enrolledSubjects.length > 0) risks.push('มีวิชาที่ไม่ผ่าน');
+      if ((failingMap.get(s.id) || 0) > 0) risks.push('มีวิชาที่ไม่ผ่าน');
 
       return {
         id: s.id,
@@ -597,18 +614,18 @@ export class AdminService {
         classroomId: s.classroomId,
         gpa,
         subjectCount: s._count.enrolledSubjects,
-        gradedSubjectCount: graded.length,
+        gradedSubjectCount: sub.count,
         attendance: {
           total: totalAttendance,
           ...stats,
           rate: attendanceRate,
         },
         behavior: {
-          positive: positivePts,
-          negative: negativePts,
+          positive: beh.positive,
+          negative: beh.negative,
           score: behaviorScore,
         },
-        submissions: { total: s._count.submissions, avgScore },
+        submissions: { total: s._count.submissions, avgScore: Math.round(sub.avgPoints) },
         risks,
         isAtRisk: risks.length > 0,
       };
@@ -670,7 +687,7 @@ export class AdminService {
     };
   }
 
-  async updateSettings(data: any) {
+  async updateSettings(data: UpdateSettingsDto) {
     const school = await this.prisma.school.findFirst();
     if (!school) throw new NotFoundException('School not found');
 

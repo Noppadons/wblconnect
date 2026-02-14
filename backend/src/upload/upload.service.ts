@@ -29,9 +29,11 @@ export class UploadService {
             );
         }
 
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const uniqueSuffix = Date.now() + '-' + require('crypto').randomBytes(8).toString('hex');
         const ext = extname(file.originalname).toLowerCase();
-        const fileName = `${folder}/${file.fieldname}-${uniqueSuffix}${ext}`;
+        // Sanitize: strip directory separators to prevent path traversal
+        const safeName = file.fieldname.replace(/[^a-zA-Z0-9_-]/g, '');
+        const fileName = `${folder}/${safeName}-${uniqueSuffix}${ext}`;
 
         // Fallback to application/octet-stream only for text/plain or missing mimetype to bypass Supabase restrictions
         const contentType = (file.mimetype === 'text/plain' || !file.mimetype)

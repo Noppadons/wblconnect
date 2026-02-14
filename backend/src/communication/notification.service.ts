@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineService } from './line.service';
+import { NotificationGateway } from './notification.gateway';
 
 @Injectable()
 export class NotificationService {
@@ -9,6 +10,7 @@ export class NotificationService {
   constructor(
     private prisma: PrismaService,
     private lineService: LineService,
+    private notificationGateway: NotificationGateway,
   ) {}
 
   async createNotification(data: {
@@ -29,6 +31,19 @@ export class NotificationService {
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
     });
+
+    // Real-time WebSocket push
+    const wsPayload = {
+      id: notification.id,
+      title: data.title,
+      content: data.content,
+      type: data.type,
+    };
+    if (data.targetId) {
+      this.notificationGateway.sendToClassroom(data.targetId, wsPayload);
+    } else {
+      this.notificationGateway.broadcastNotification(wsPayload);
+    }
 
     if (sendLine) {
       try {
@@ -106,7 +121,7 @@ export class NotificationService {
   }
 
   async getUnreadCount(userId: string, targetId?: string | null) {
-    const notifications = await this.prisma.notification.findMany({
+    return this.prisma.notification.count({
       where: {
         AND: [
           {
@@ -123,7 +138,6 @@ export class NotificationService {
         ],
       },
     });
-    return notifications.length;
   }
 
   async deleteNotification(id: string) {

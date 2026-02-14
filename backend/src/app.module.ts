@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { UserThrottleGuard } from './common/guards/user-throttle.guard';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -18,6 +19,12 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { UploadModule } from './upload/upload.module';
+import { EventsModule } from './events/events.module';
+import { LeaveModule } from './leave/leave.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
+import { QRAttendanceModule } from './qr-attendance/qr-attendance.module';
+import { SurveyModule } from './survey/survey.module';
 
 @Module({
   imports: [
@@ -35,6 +42,12 @@ import { UploadModule } from './upload/upload.module';
     ScheduleModule,
     TeacherModule,
     UploadModule,
+    EventsModule,
+    LeaveModule,
+    LeaderboardModule,
+    PortfolioModule,
+    QRAttendanceModule,
+    SurveyModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -47,7 +60,7 @@ import { UploadModule } from './upload/upload.module';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: UserThrottleGuard,
     },
   ],
 })

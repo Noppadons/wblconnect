@@ -16,10 +16,12 @@ export class ReportsController {
   async exportAttendanceExcel(
     @Req() req: any,
     @Query('classroomId') classroomId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Res() res: Response,
   ) {
     const workbook =
-      await this.reportsService.generateAttendanceExcel(req.user.id, classroomId);
+      await this.reportsService.generateAttendanceExcel(req.user.id, classroomId, startDate, endDate);
 
     res.setHeader(
       'Content-Type',
